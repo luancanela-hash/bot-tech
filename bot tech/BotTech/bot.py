@@ -29,6 +29,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
+# --- SISTEMA DE JOGOS CO-OP ---
+
 class DropdownJogos(Select):
     def __init__(self, lista_arquivos, pagina_atual):
         options = []
@@ -75,7 +77,6 @@ class DropdownJogos(Select):
                 ephemeral=True
             )
 
-        # Reseta o menu suspenso após 60 segundos para "Selecione um jogo..."
         async def resetar_menu():
             await asyncio.sleep(60)
             try:
@@ -86,7 +87,6 @@ class DropdownJogos(Select):
 
         asyncio.create_task(resetar_menu())
 
-# --- MODAL POP-UP DE PESQUISA ---
 class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
     termo = TextInput(
         label="Nome do jogo",
@@ -99,7 +99,6 @@ class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
         nova_view = DropdownView(pagina=1, termo_busca=self.termo.value)
         await interaction.response.edit_message(view=nova_view)
 
-# --- VIEW PRINCIPAL ---
 class DropdownView(View):
     def __init__(self, pagina=1, termo_busca=None):
         super().__init__(timeout=None)
@@ -112,7 +111,6 @@ class DropdownView(View):
         else:
             todos_arquivos = []
 
-        # Aplica o filtro de pesquisa se houver termo digitado
         if self.termo_busca:
             self.arquivos = [f for f in todos_arquivos if self.termo_busca.lower() in f.lower()]
         else:
@@ -126,10 +124,8 @@ class DropdownView(View):
         fim = inicio + self.tamanho_pagina
         bloco = self.arquivos[inicio:fim]
 
-        # Adiciona o menu dropdown dos jogos da página atual
         self.add_item(DropdownJogos(bloco, self.pagina))
 
-        # Atualiza o estado dos botões de navegação e indicação
         self.btn_anterior.disabled = (self.pagina <= 1)
         self.btn_proximo.disabled = (self.pagina >= self.total_paginas)
         
@@ -140,32 +136,37 @@ class DropdownView(View):
             self.btn_indicador.label = f"Página {self.pagina}/{self.total_paginas}"
             self.btn_limpar_busca.disabled = True
 
-    @button(label="🔍 Pesquisar Jogo", style=discord.ButtonStyle.success, custom_id="btn_search_game", row=1)
-    async def btn_pesquisar(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(ModalPesquisa())
-
-    @button(label="❌ Limpar Busca", style=discord.ButtonStyle.danger, custom_id="btn_clear_search", disabled=True, row=1)
-    async def btn_limpar_busca(self, interaction: discord.Interaction, button: Button):
-        nova_view = DropdownView(pagina=1, termo_busca=None)
-        await interaction.response.edit_message(view=nova_view)
-
-    @button(label="◀️ Anterior", style=discord.ButtonStyle.primary, custom_id="btn_prev_page", row=2)
+    # Linha 1: Botões de navegação (Anterior, Indicador de Página, Próximo)
+    @button(label="◀️ Anterior", style=discord.ButtonStyle.primary, custom_id="btn_prev_page", row=1)
     async def btn_anterior(self, interaction: discord.Interaction, button: Button):
         if self.pagina > 1:
             self.pagina -= 1
             nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
-    @button(label="Página 1/1", style=discord.ButtonStyle.secondary, disabled=True, custom_id="btn_page_indicator", row=2)
+    @button(label="Página 1/1", style=discord.ButtonStyle.secondary, disabled=True, custom_id="btn_page_indicator", row=1)
     async def btn_indicador(self, interaction: discord.Interaction, button: Button):
         pass
 
-    @button(label="Próximo ▶️", style=discord.ButtonStyle.primary, custom_id="btn_next_page", row=2)
+    @button(label="Próximo ▶️", style=discord.ButtonStyle.primary, custom_id="btn_next_page", row=1)
     async def btn_proximo(self, interaction: discord.Interaction, button: Button):
         if self.pagina < self.total_paginas:
             self.pagina += 1
             nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
+
+    # Linha 2: Botões de pesquisa e limpeza (Pesquisar Jogo, Limpar Busca)
+    @button(label="🔍 Pesquisar Jogo", style=discord.ButtonStyle.success, custom_id="btn_search_game", row=2)
+    async def btn_pesquisar(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(ModalPesquisa())
+
+    @button(label="❌ Limpar Busca", style=discord.ButtonStyle.danger, custom_id="btn_clear_search", disabled=True, row=2)
+    async def btn_limpar_busca(self, interaction: discord.Interaction, button: Button):
+        nova_view = DropdownView(pagina=1, termo_busca=None)
+        await interaction.response.edit_message(view=nova_view)
+
+
+# --- EVENTOS E COMANDOS DO BOT ---
 
 @bot.event
 async def on_ready():
@@ -182,7 +183,7 @@ async def enviar_menu(ctx):
     
     embed = discord.Embed(
         title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões◀️ ▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões ◀️▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
