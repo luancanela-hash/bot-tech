@@ -1,6 +1,0 @@
-MTU1Nzg5MDgwNDIzMDY2MDA5Ng.Gml_jH.osb8mTRzknNSxBbFjszhYAVl_PowpU_Q3t6ANw
-
-comando ligar bot= python bot.py
-comando = !enviar_menu
-
-https://discord.com/oauth2/authorize?client_id=1557890804230660096&permissions=108544&integration_type=0&scope=bot
