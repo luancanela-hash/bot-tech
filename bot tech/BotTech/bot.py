@@ -164,57 +164,11 @@ class DropdownView(View):
             await interaction.response.edit_message(view=nova_view)
 
 
-# --- SISTEMA DE PAINEL DE MÚSICA ---
-
-class ModalTocarMusica(Modal, title="🎵 Tocar Música"):
-    termo_musica = TextInput(
-        label="Nome ou Link da Música",
-        placeholder="Digite o nome da música ou link...",
-        required=True,
-        max_length=100
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # Envia a mensagem no chat e apaga o aviso efêmero em 3 segundos
-        msg = await interaction.channel.send(f"m!play {self.termo_musica.value}")
-        await interaction.response.send_message(f"✅ Pedido enviado para: **{self.termo_musica.value}**", ephemeral=True, delete_after=3)
-        
-        # Opcional: faz a Jockie Music detetar mais facilmente se for necessário, 
-        # mas como a Jockie filtra bots, o ideal é digitar diretamente no chat caso ela recuse mensagens de outros bots.
-
-class PainelMusicaView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @button(label="🎵 Tocar", style=discord.ButtonStyle.success, custom_id="btn_music_play", row=0)
-    async def btn_tocar(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(ModalTocarMusica())
-
-    @button(label="⏭️ Pular", style=discord.ButtonStyle.primary, custom_id="btn_music_skip", row=0)
-    async def btn_pular(self, interaction: discord.Interaction, button: Button):
-        await interaction.channel.send("m!skip")
-        await interaction.response.send_message("⏭️ Pular enviado!", ephemeral=True, delete_after=2)
-
-    @button(label="⏸️ Pausar/Retomar", style=discord.ButtonStyle.secondary, custom_id="btn_music_pause", row=0)
-    async def btn_pausar(self, interaction: discord.Interaction, button: Button):
-        await interaction.channel.send("m!pause")
-        await interaction.response.send_message("⏸️ Pausa enviada!", ephemeral=True, delete_after=2)
-
-    @button(label="📜 Fila", style=discord.ButtonStyle.secondary, custom_id="btn_music_queue", row=1)
-    async def btn_fila(self, interaction: discord.Interaction, button: Button):
-        await interaction.channel.send("m!queue")
-        await interaction.response.send_message("📜 Fila solicitada!", ephemeral=True, delete_after=2)
-
-    @button(label="⏹️ Parar", style=discord.ButtonStyle.danger, custom_id="btn_music_stop", row=1)
-    async def btn_parar(self, interaction: discord.Interaction, button: Button):
-        await interaction.channel.send("m!stop")
-        await interaction.response.send_message("⏹️ Stop enviado!", ephemeral=True, delete_after=2)
-
+# --- EVENTOS E COMANDOS DO BOT ---
 
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
-    bot.add_view(PainelMusicaView())
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
@@ -235,17 +189,17 @@ async def enviar_menu(ctx):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def painel_musica(ctx):
-    # Tenta apagar a mensagem do comando !painel_musica enviada pelo admin
     try:
         await ctx.message.delete()
     except Exception:
         pass
 
     embed = discord.Embed(
-        title="🎶 Painel de Controlo Musical",
-        description="Utilize os botões abaixo para interagir com o bot de música de forma rápida e limpa!",
-        color=discord.Color.green()
-    )
-    await ctx.send(embed=embed, view=PainelMusicaView())
-
-bot.run(TOKEN)
+        title="🎶 Guia Rápido de Comandos de Música",
+        description="Para tocar música, entre em um canal de voz e digite os comandos abaixo neste chat:\n\n"
+                    "▶️ `m!play [nome ou link]` — Toca uma música ou playlist\n"
+                    "⏭️ `m!skip` — Pula para a próxima música da fila\n"
+                    "⏸️ `m!pause` — Pausa a música atual\n"
+                    "▶️ `m!resume` — Retoma a música pausada\n"
+                    "⏹️ `m!stop` — Para a música e desconecta o bot\n"
+                    "📜 `m!queue` — Most
