@@ -285,3 +285,33 @@ async def painel_stream(ctx):
 async def comandos(ctx):
     # Apaga o comando digitado no chat para manter limpo
     try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    embed = discord.Embed(
+        title="🛠️ Painel de Ajuda - Comandos do Administrador",
+        description="Aqui tens a lista de todos os comandos administrativos disponíveis no bot:",
+        color=discord.Color.gold()
+    )
+    embed.add_field(
+        name="`!enviar_menu`",
+        value="Envia o painel interativo de seleção de Jogos Co-op com suporte a paginação e pesquisa de arquivos `.torrent`.",
+        inline=False
+    )
+    embed.add_field(
+        name="`!painel_stream`",
+        value="Envia o painel roxo com as 5 salas do Kosmi fixas e o menu suspenso para iniciar avisos de transmissão.",
+        inline=False
+    )
+    embed.add_field(
+        name="`!comandos`",
+        value="Mostra esta lista de ajuda administrativa (visível apenas para administradores).",
+        inline=False
+    )
+    embed.set_footer(text="Tech Bot - Gestão de Transmissões & Jogos")
+
+    # Envia a mensagem de forma privada (ephemeral) para que apenas o admin veja
+    await ctx.send(embed=embed, ephemeral=True)
+
+bot.run(TOKEN)
