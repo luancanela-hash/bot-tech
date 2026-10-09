@@ -3,8 +3,8 @@ import discord
 from discord.ext import commands
 from discord.ui import Select, View
 
-# Cole o seu TOKEN do Discord Developer Portal entre as aspas
-TOKEN = "MTU1Nzg5MDgwNDIzMDY2MDA5Ng.Gml_jH.osb8mTRzknNSxBbFjszhYAVl_PowpU_Q3t6ANw"
+# Busca o token de forma segura das variáveis de ambiente configuradas no Render
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
