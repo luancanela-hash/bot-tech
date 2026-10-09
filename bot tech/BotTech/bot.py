@@ -13,11 +13,9 @@ def home():
     return "Bot Tech está online!"
 
 def run_web_server():
-    # O Render disponibiliza a porta na variável de ambiente PORT
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# Inicia o servidor web numa thread separada
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CÓDIGO DO BOT DO DISCORD ---
@@ -35,7 +33,8 @@ class DropdownJogos(Select):
         options = []
         if os.path.exists(PASTA_TORRENTS):
             arquivos = sorted([f for f in os.listdir(PASTA_TORRENTS) if f.endswith('.torrent')])
-            for arq in arquivos:
+            # Limite de segurança de 25 opções exigido pelo Discord
+            for arq in arquivos[:25]:
                 nome_jogo = arq.replace('.torrent', '')
                 options.append(
                     discord.SelectOption(
@@ -53,7 +52,8 @@ class DropdownJogos(Select):
             placeholder="Selecione um jogo para baixar...",
             min_values=1,
             max_values=1,
-            options=options[:25]
+            options=options,
+            custom_id="menu_jogos_dropdown" # ID estático para não perder conexão
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -79,12 +79,13 @@ class DropdownJogos(Select):
 
 class DropdownView(View):
     def __init__(self):
-        super().__init__(timeout=None)
-        self.clear_items()
+        super().__init__(timeout=None) # Sem timeout para o menu não expirar
         self.add_item(DropdownJogos())
 
 @bot.event
 async def on_ready():
+    # Registra a View persistente assim que o bot liga
+    bot.add_view(DropdownView())
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
