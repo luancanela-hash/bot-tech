@@ -29,8 +29,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
-# --- SISTEMA DE JOGOS CO-OP (MANTIDO INTACTO) ---
-
 class DropdownJogos(Select):
     def __init__(self, lista_arquivos, pagina_atual):
         options = []
@@ -77,6 +75,7 @@ class DropdownJogos(Select):
                 ephemeral=True
             )
 
+        # Reseta o menu suspenso após 60 segundos para "Selecione um jogo..."
         async def resetar_menu():
             await asyncio.sleep(60)
             try:
@@ -87,6 +86,7 @@ class DropdownJogos(Select):
 
         asyncio.create_task(resetar_menu())
 
+# --- MODAL POP-UP DE PESQUISA ---
 class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
     termo = TextInput(
         label="Nome do jogo",
@@ -99,6 +99,7 @@ class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
         nova_view = DropdownView(pagina=1, termo_busca=self.termo.value)
         await interaction.response.edit_message(view=nova_view)
 
+# --- VIEW PRINCIPAL ---
 class DropdownView(View):
     def __init__(self, pagina=1, termo_busca=None):
         super().__init__(timeout=None)
@@ -111,6 +112,7 @@ class DropdownView(View):
         else:
             todos_arquivos = []
 
+        # Aplica o filtro de pesquisa se houver termo digitado
         if self.termo_busca:
             self.arquivos = [f for f in todos_arquivos if self.termo_busca.lower() in f.lower()]
         else:
@@ -124,8 +126,10 @@ class DropdownView(View):
         fim = inicio + self.tamanho_pagina
         bloco = self.arquivos[inicio:fim]
 
+        # Adiciona o menu dropdown dos jogos da página atual
         self.add_item(DropdownJogos(bloco, self.pagina))
 
+        # Atualiza o estado dos botões de navegação e indicação
         self.btn_anterior.disabled = (self.pagina <= 1)
         self.btn_proximo.disabled = (self.pagina >= self.total_paginas)
         
@@ -163,9 +167,6 @@ class DropdownView(View):
             nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
-
-# --- EVENTOS E COMANDOS DO BOT ---
-
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
@@ -181,25 +182,9 @@ async def enviar_menu(ctx):
     
     embed = discord.Embed(
         title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse o botão de próximo ou clique em 🔍 **Pesquisar Jogo** para buscar diretamente.",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões◀️ ▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def painel_musica(ctx):
-    try:
-        await ctx.message.delete()
-    except Exception:
-        pass
-
-    embed = discord.Embed(
-        title="🎶 Guia Rápido de Comandos de Música",
-        description="Para tocar música, entre em um canal de voz e digite os comandos abaixo neste chat:\n\n"
-                    "▶️ `m!play [nome ou link]` — Toca uma música ou playlist\n"
-                    "⏭️ `m!skip` — Pula para a próxima música da fila\n"
-                    "⏸️ `m!pause` — Pausa a música atual\n"
-                    "▶️ `m!resume` — Retoma a música pausada\n"
-                    "⏹️ `m!stop` — Para a música e desconecta o bot\n"
-                    "📜 `m!queue` — Most
+bot.run(TOKEN)
