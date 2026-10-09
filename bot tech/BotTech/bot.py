@@ -283,7 +283,6 @@ async def painel_stream(ctx):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def comandos(ctx):
-    # Apaga o comando digitado no chat para manter limpo
     try:
         await ctx.message.delete()
     except:
@@ -306,12 +305,12 @@ async def comandos(ctx):
     )
     embed.add_field(
         name="`!comandos`",
-        value="Mostra esta lista de ajuda administrativa (visível apenas para administradores).",
+        value="Mostra esta lista de ajuda administrativa.",
         inline=False
     )
-    embed.set_footer(text="Tech Bot - Gestão de Transmissões & Jogos")
+    embed.set_footer(text="Esta mensagem desaparecerá automaticamente após 30 segundos.")
 
-    # Envia a mensagem de forma privada (ephemeral) para que apenas o admin veja
-    await ctx.send(embed=embed, ephemeral=True)
+    # Envia a mensagem e programa para se apagar sozinha após 30 segundos para manter o chat limpo
+    await ctx.send(embed=embed, delete_after=30)
 
 bot.run(TOKEN)
