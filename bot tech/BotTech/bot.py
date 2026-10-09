@@ -1,9 +1,26 @@
 import os
+import threading
+from flask import Flask
 import discord
 from discord.ext import commands
 from discord.ui import Select, View
 
-# Busca o token de forma segura das variáveis de ambiente configuradas no Render
+# --- SERVIDOR WEB DUMMY PARA EVITAR O SLEEP DO RENDER ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot Tech está online!"
+
+def run_web_server():
+    # O Render disponibiliza a porta na variável de ambiente PORT
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# Inicia o servidor web numa thread separada
+threading.Thread(target=run_web_server, daemon=True).start()
+
+# --- CÓDIGO DO BOT DO DISCORD ---
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
@@ -16,11 +33,8 @@ PASTA_TORRENTS = "./torrents"
 class DropdownJogos(Select):
     def __init__(self):
         options = []
-        
-        # Lê os ficheiros .torrent da pasta torrents
         if os.path.exists(PASTA_TORRENTS):
             arquivos = sorted([f for f in os.listdir(PASTA_TORRENTS) if f.endswith('.torrent')])
-            
             for arq in arquivos:
                 nome_jogo = arq.replace('.torrent', '')
                 options.append(
@@ -44,7 +58,6 @@ class DropdownJogos(Select):
 
     async def callback(self, interaction: discord.Interaction):
         nome_arquivo = self.values[0]
-        
         if nome_arquivo == "none":
             return await interaction.response.send_message("Nenhum jogo disponível no momento.", ephemeral=True)
 
@@ -52,7 +65,6 @@ class DropdownJogos(Select):
 
         try:
             arquivo = discord.File(caminho_arquivo)
-            # Envia o arquivo e define delete_after=60 para apagar a mensagem após 1 minuto
             await interaction.response.send_message(
                 content=f"Aqui está o seu arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
                 file=arquivo,
