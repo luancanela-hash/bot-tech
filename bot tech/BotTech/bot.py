@@ -29,6 +29,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
+# --- SISTEMA DE JOGOS CO-OP (MANTIDO INTACTO) ---
+
 class DropdownJogos(Select):
     def __init__(self, lista_arquivos, pagina_atual):
         options = []
@@ -86,7 +88,7 @@ class DropdownJogos(Select):
 
         asyncio.create_task(resetar_menu())
 
-# --- MODAL POP-UP DE PESQUISA ---
+# --- MODAL POP-UP DE PESQUISA DE JOGOS ---
 class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
     termo = TextInput(
         label="Nome do jogo",
@@ -99,7 +101,7 @@ class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
         nova_view = DropdownView(pagina=1, termo_busca=self.termo.value)
         await interaction.response.edit_message(view=nova_view)
 
-# --- VIEW PRINCIPAL ---
+# --- VIEW PRINCIPAL DE JOGOS ---
 class DropdownView(View):
     def __init__(self, pagina=1, termo_busca=None):
         super().__init__(timeout=None)
@@ -112,7 +114,6 @@ class DropdownView(View):
         else:
             todos_arquivos = []
 
-        # Aplica o filtro de pesquisa se houver termo digitado
         if self.termo_busca:
             self.arquivos = [f for f in todos_arquivos if self.termo_busca.lower() in f.lower()]
         else:
@@ -126,10 +127,8 @@ class DropdownView(View):
         fim = inicio + self.tamanho_pagina
         bloco = self.arquivos[inicio:fim]
 
-        # Adiciona o menu dropdown dos jogos da página atual
         self.add_item(DropdownJogos(bloco, self.pagina))
 
-        # Atualiza o estado dos botões de navegação e indicação
         self.btn_anterior.disabled = (self.pagina <= 1)
         self.btn_proximo.disabled = (self.pagina >= self.total_paginas)
         
@@ -167,9 +166,57 @@ class DropdownView(View):
             nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
+
+# --- NOVO: SISTEMA DE PAINEL DE MÚSICA (JOCKIE MUSIC INTEGRATION) ---
+
+class ModalTocarMusica(Modal, title="🎵 Tocar Música"):
+    termo_musica = TextInput(
+        label="Nome ou Link da Música",
+        placeholder="Digite o nome da música ou link do YouTube/Spotify...",
+        required=True,
+        max_length=100
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Envia o comando m!play simulando o pedido no canal atual
+        await interaction.channel.send(f"m!play {self.termo_musica.value}")
+        await interaction.response.send_message(f"✅ Pedido enviado: **{self.termo_musica.value}**", ephemeral=True, delete_after=5)
+
+class PainelMusicaView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @button(label="🎵 Tocar", style=discord.ButtonStyle.success, custom_id="btn_music_play", row=0)
+    async def btn_tocar(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(ModalTocarMusica())
+
+    @button(label="⏭️ Pular", style=discord.ButtonStyle.primary, custom_id="btn_music_skip", row=0)
+    async def btn_pular(self, interaction: discord.Interaction, button: Button):
+        await interaction.channel.send("m!skip")
+        await interaction.response.send_message("⏭️ Comando de pular enviado!", ephemeral=True, delete_after=3)
+
+    @button(label="⏸️ Pausar/Retomar", style=discord.ButtonStyle.secondary, custom_id="btn_music_pause", row=0)
+    async def btn_pausar(self, interaction: discord.Interaction, button: Button):
+        await interaction.channel.send("m!pause")
+        await interaction.response.send_message("⏸️ Comando de pausa enviado!", ephemeral=True, delete_after=3)
+
+    @button(label="📜 Fila", style=discord.ButtonStyle.secondary, custom_id="btn_music_queue", row=1)
+    async def btn_fila(self, interaction: discord.Interaction, button: Button):
+        await interaction.channel.send("m!queue")
+        await interaction.response.send_message("📜 A mostrar a fila...", ephemeral=True, delete_after=3)
+
+    @button(label="⏹️ Parar", style=discord.ButtonStyle.danger, custom_id="btn_music_stop", row=1)
+    async def btn_parar(self, interaction: discord.Interaction, button: Button):
+        await interaction.channel.send("m!stop")
+        await interaction.response.send_message("⏹️ Música parada e bot desconectado!", ephemeral=True, delete_after=3)
+
+
+# --- EVENTOS E COMANDOS DO BOT ---
+
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
+    bot.add_view(PainelMusicaView()) # Regista a persistent view de música
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
@@ -182,9 +229,24 @@ async def enviar_menu(ctx):
     
     embed = discord.Embed(
         title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões◀️ ▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse o botão de próximo ou clique em 🔍 **Pesquisar Jogo** para buscar diretamente.",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def painel_musica(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    embed = discord.Embed(
+        title="🎶 Painel de Controlo Musical",
+        description="Utilize os botões abaixo para interagir com o bot de música de forma rápida e limpa sem precisar de digitar comandos compridos no chat!",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed, view=PainelMusicaView())
 
 bot.run(TOKEN)
