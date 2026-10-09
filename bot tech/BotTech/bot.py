@@ -29,6 +29,15 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
+# --- MAPA DE SALAS KOSMI ---
+SALAS_KOSMI = {
+    "1": {"nome": "Tech Ninjas Live [1]", "url": "https://app.kosmi.io/room/e8az5s"},
+    "2": {"nome": "Tech Ninjas Live [2]", "url": "https://app.kosmi.io/room/w276in"},
+    "3": {"nome": "Tech Ninjas Live [3]", "url": "https://app.kosmi.io/room/je33qq"},
+    "4": {"nome": "Tech Ninjas Live [4]", "url": "https://app.kosmi.io/room/4t50cc"},
+    "5": {"nome": "Tech Ninjas Live [5]", "url": "https://app.kosmi.io/room/ywu834"}
+}
+
 # --- SISTEMA DE JOGOS CO-OP ---
 
 class DropdownJogos(Select):
@@ -136,7 +145,7 @@ class DropdownView(View):
             self.btn_indicador.label = f"Página {self.pagina}/{self.total_paginas}"
             self.btn_limpar_busca.disabled = True
 
-    # Linha 1: Botões de navegação (Anterior, Indicador de Página, Próximo)
+    # Linha 1: Botões de navegação
     @button(label="◀️ Anterior", style=discord.ButtonStyle.primary, custom_id="btn_prev_page", row=1)
     async def btn_anterior(self, interaction: discord.Interaction, button: Button):
         if self.pagina > 1:
@@ -155,7 +164,7 @@ class DropdownView(View):
             nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
-    # Linha 2: Botões de pesquisa e limpeza (Pesquisar Jogo, Limpar Busca)
+    # Linha 2: Botões de pesquisa e limpeza
     @button(label="🔍 Pesquisar Jogo", style=discord.ButtonStyle.success, custom_id="btn_search_game", row=2)
     async def btn_pesquisar(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(ModalPesquisa())
@@ -166,11 +175,59 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
+# --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
+
+class SelectSalaKosmi(Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Tech Ninjas Live [1]", description="Abrir a sala 1 do Kosmi", emoji="🔴", value="1"),
+            discord.SelectOption(label="Tech Ninjas Live [2]", description="Abrir a sala 2 do Kosmi", emoji="🔴", value="2"),
+            discord.SelectOption(label="Tech Ninjas Live [3]", description="Abrir a sala 3 do Kosmi", emoji="🔴", value="3"),
+            discord.SelectOption(label="Tech Ninjas Live [4]", description="Abrir a sala 4 do Kosmi", emoji="🔴", value="4"),
+            discord.SelectOption(label="Tech Ninjas Live [5]", description="Abrir a sala 5 do Kosmi", emoji="🔴", value="5"),
+        ]
+        super().__init__(
+            placeholder="Selecione a sala para iniciar transmissão...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="select_sala_kosmi_fixo"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        sala_id = self.values[0]
+        dados_sala = SALAS_KOSMI.get(sala_id)
+
+        if not dados_sala:
+            return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
+
+        embed = discord.Embed(
+            title=f"🔴 Transmissão Iniciada ({dados_sala['nome']})!",
+            description=f"O utilizador **{interaction.user.name}** começou uma transmissão em direto!\n\n"
+                        f"🔗 **Clica no link abaixo para assistir:**\n"
+                        f"[Aceder à {dados_sala['nome']}]({dados_sala['url']})",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="Esta mensagem será apagada automaticamente após 5 minutos.")
+        
+        # Envia o aviso público no canal e agenda a exclusão automática em 5 minutos (300 segundos)
+        await interaction.channel.send(embed=embed, delete_after=300)
+        
+        # Resposta privada temporária para confirmar a seleção
+        await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
+
+class StreamPainelView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(SelectSalaKosmi())
+
+
 # --- EVENTOS E COMANDOS DO BOT ---
 
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
+    bot.add_view(StreamPainelView()) # Regista a view persistente das salas de stream
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
@@ -189,23 +246,6 @@ async def enviar_menu(ctx):
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
 
 @bot.command()
-async def streamar(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-        
-    embed = discord.Embed(
-        title="🔴 Transmissão Iniciada!",
-        description=f"O utilizador **{ctx.author.name}** começou uma transmissão em direto!\n\n"
-                    f"🔗 **Clica no link abaixo para assistir:**\n"
-                    f"[Aceder à Sala Kosmi (kosmi.to/@luansantos2)](https://kosmi.to/@luansantos2)",
-        color=discord.Color.red()
-    )
-    embed.set_footer(text="Basta abrir pelo navegador para ver e interagir!")
-    await ctx.send(embed=embed)
-
-@bot.command()
 @commands.has_permissions(administrator=True)
 async def painel_stream(ctx):
     try:
@@ -213,13 +253,20 @@ async def painel_stream(ctx):
     except:
         pass
         
+    # Monta a lista de salas visíveis no embed fixo
+    descricao_salas = (
+        "Para assistir ou acompanhar as transmissões, seleciona a tua sala no menu abaixo:\n\n"
+    )
+    for chave, sala in SALAS_KOSMI.items():
+        descricao_salas += f"📌 **{sala['nome']}**: [Entrar na Sala]({sala['url']})\n"
+    
+    descricao_salas += "\n*Usa o menu suspenso abaixo para disparar o aviso de transmissão no chat!*"
+
     embed = discord.Embed(
-        title="🖥️ Transmissão de Tela & Co-op",
-        description="Para assistir ou acompanhar as transmissões de jogos e ecrã, clica no link abaixo para abrir a sala web:\n\n"
-                    "🔗 **Sala Kosmi:** [kosmi.to/@luansantos2](https://kosmi.to/@luansantos2)\n\n"
-                    "*Abre diretamente no navegador do teu PC ou telemóvel!*",
+        title="🖥️ Painel de Transmissões - Tech Ninjas",
+        description=descricao_salas,
         color=discord.Color.purple()
     )
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed, view=StreamPainelView())
 
 bot.run(TOKEN)
