@@ -228,6 +228,15 @@ class SelectSalaKosmi(Select):
         await interaction.channel.send(embed=embed, view=StreamAvisoView(), delete_after=7200)
         await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
 
+        async def resetar_painel_stream():
+            await asyncio.sleep(15)
+            try:
+                await interaction.message.edit(view=StreamPainelView())
+            except Exception:
+                pass
+
+        asyncio.create_task(resetar_painel_stream())
+
 class StreamPainelView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -267,9 +276,7 @@ async def painel_stream(ctx):
         
     embed = discord.Embed(
         title="🖥️ Painel de Transmissões - Tech Ninjas",
-        description="Para assistir ou acompanhar as transmissões, seleciona a tua sala no menu abaixo:\n\n"
-                    "📌 **Tech Ninjas Live [1] a [5]**: Salas exclusivas do Kosmi para jogatinas.\n\n"
-                    "*Usa o menu suspenso abaixo para disparar o aviso de transmissão no chat!*",
+        description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
         color=discord.Color.purple()
     )
     await ctx.send(embed=embed, view=StreamPainelView())
@@ -294,7 +301,7 @@ async def comandos(ctx):
     )
     embed.add_field(
         name="`!painel_stream`",
-        value="Envia o painel roxo com a descrição limpa e o menu suspenso para iniciar avisos de transmissão.",
+        value="Envia o painel limpo com a nova descrição e o menu suspenso para iniciar avisos de transmissão.",
         inline=False
     )
     embed.add_field(
