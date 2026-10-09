@@ -179,7 +179,7 @@ class DropdownView(View):
 
 class StreamAvisoView(View):
     def __init__(self):
-        super().__init__(timeout=7200) # Expira junto com o limite máximo
+        super().__init__(timeout=7200)
 
     @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
@@ -225,10 +225,7 @@ class SelectSalaKosmi(Select):
         )
         embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
         
-        # Envia o aviso público com o botão de fechar e agenda exclusão automática em 2 horas (7200 segundos)
         await interaction.channel.send(embed=embed, view=StreamAvisoView(), delete_after=7200)
-        
-        # Resposta privada temporária para confirmar a seleção
         await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
 
 class StreamPainelView(View):
@@ -283,4 +280,8 @@ async def painel_stream(ctx):
     )
     await ctx.send(embed=embed, view=StreamPainelView())
 
-bot.run(TOKEN)
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def comandos(ctx):
+    # Apaga o comando digitado no chat para manter limpo
+    try:
