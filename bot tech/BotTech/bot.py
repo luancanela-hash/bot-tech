@@ -167,7 +167,7 @@ class DropdownView(View):
             await interaction.response.edit_message(view=nova_view)
 
 
-# --- NOVO: SISTEMA DE PAINEL DE MÚSICA (JOCKIE MUSIC INTEGRATION) ---
+# --- SISTEMA DE PAINEL DE MÚSICA (PERSISTENTE E FIXO) ---
 
 class ModalTocarMusica(Modal, title="🎵 Tocar Música"):
     termo_musica = TextInput(
@@ -178,13 +178,13 @@ class ModalTocarMusica(Modal, title="🎵 Tocar Música"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Envia o comando m!play simulando o pedido no canal atual
+        # Envia o comando m!play no canal e apaga rapidamente o aviso efêmero
         await interaction.channel.send(f"m!play {self.termo_musica.value}")
         await interaction.response.send_message(f"✅ Pedido enviado: **{self.termo_musica.value}**", ephemeral=True, delete_after=5)
 
 class PainelMusicaView(View):
     def __init__(self):
-        super().__init__(timeout=None)
+        super().__init__(timeout=None) # Timeout None torna o painel persistente para sempre
 
     @button(label="🎵 Tocar", style=discord.ButtonStyle.success, custom_id="btn_music_play", row=0)
     async def btn_tocar(self, interaction: discord.Interaction, button: Button):
@@ -216,7 +216,7 @@ class PainelMusicaView(View):
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
-    bot.add_view(PainelMusicaView()) # Regista a persistent view de música
+    bot.add_view(PainelMusicaView()) # Regista a view para nunca expirar os botões
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
