@@ -4,7 +4,7 @@ import threading
 from flask import Flask
 import discord
 from discord.ext import commands
-from discord.ui import Select, View, button, Button
+from discord.ui import Select, View, button, Button, Modal, TextInput
 
 # --- SERVIDOR WEB DUMMY PARA EVITAR O SLEEP DO RENDER ---
 app = Flask(__name__)
@@ -44,7 +44,7 @@ class DropdownJogos(Select):
             )
 
         if not options:
-            options.append(discord.SelectOption(label="Nenhum jogo disponível nesta página", value="none"))
+            options.append(discord.SelectOption(label="Nenhum jogo encontrado", value="none"))
 
         super().__init__(
             placeholder=f"Selecione um jogo (Página {pagina_atual})...",
@@ -57,7 +57,7 @@ class DropdownJogos(Select):
     async def callback(self, interaction: discord.Interaction):
         nome_arquivo = self.values[0]
         if nome_arquivo == "none":
-            return await interaction.response.send_message("Nenhum jogo disponível nesta página.", ephemeral=True)
+            return await interaction.response.send_message("Nenhum jogo disponível.", ephemeral=True)
 
         caminho_arquivo = os.path.join(PASTA_TORRENTS, nome_arquivo)
 
@@ -75,27 +75,48 @@ class DropdownJogos(Select):
                 ephemeral=True
             )
 
-        # Função para resetar o menu suspenso após 60 segundos
+        # Reseta o menu suspenso após 60 segundos para "Selecione um jogo..."
         async def resetar_menu():
             await asyncio.sleep(60)
             try:
-                view_atualizada = DropdownView(pagina=self.view.pagina)
+                view_atualizada = DropdownView(pagina=self.view.pagina, termo_busca=self.view.termo_busca)
                 await interaction.message.edit(view=view_atualizada)
             except Exception:
-                pass  # Ignora caso a mensagem tenha sido apagada
+                pass
 
         asyncio.create_task(resetar_menu())
 
+# --- MODAL POP-UP DE PESQUISA ---
+class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
+    termo = TextInput(
+        label="Nome do jogo",
+        placeholder="Digite parte do nome (ex: Age, Among...)",
+        required=True,
+        max_length=50
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        nova_view = DropdownView(pagina=1, termo_busca=self.termo.value)
+        await interaction.response.edit_message(view=nova_view)
+
+# --- VIEW PRINCIPAL ---
 class DropdownView(View):
-    def __init__(self, pagina=1):
+    def __init__(self, pagina=1, termo_busca=None):
         super().__init__(timeout=None)
         self.pagina = pagina
         self.tamanho_pagina = 25
+        self.termo_busca = termo_busca
         
         if os.path.exists(PASTA_TORRENTS):
-            self.arquivos = sorted([f for f in os.listdir(PASTA_TORRENTS) if f.endswith('.torrent')])
+            todos_arquivos = sorted([f for f in os.listdir(PASTA_TORRENTS) if f.endswith('.torrent')])
         else:
-            self.arquivos = []
+            todos_arquivos = []
+
+        # Aplica o filtro de pesquisa se houver termo digitado
+        if self.termo_busca:
+            self.arquivos = [f for f in todos_arquivos if self.termo_busca.lower() in f.lower()]
+        else:
+            self.arquivos = todos_arquivos
 
         self.total_paginas = max(1, (len(self.arquivos) + self.tamanho_pagina - 1) // self.tamanho_pagina)
         if self.pagina > self.total_paginas:
@@ -108,27 +129,42 @@ class DropdownView(View):
         # Adiciona o menu dropdown dos jogos da página atual
         self.add_item(DropdownJogos(bloco, self.pagina))
 
-        # Atualiza o estado dos botões de navegação
+        # Atualiza o estado dos botões de navegação e indicação
         self.btn_anterior.disabled = (self.pagina <= 1)
         self.btn_proximo.disabled = (self.pagina >= self.total_paginas)
-        self.btn_indicador.label = f"Página {self.pagina}/{self.total_paginas}"
+        
+        if self.termo_busca:
+            self.btn_indicador.label = f"Busca: '{self.termo_busca}' ({len(self.arquivos)})"
+            self.btn_limpar_busca.disabled = False
+        else:
+            self.btn_indicador.label = f"Página {self.pagina}/{self.total_paginas}"
+            self.btn_limpar_busca.disabled = True
 
-    @button(label="◀️ Anterior", style=discord.ButtonStyle.primary, custom_id="btn_prev_page")
+    @button(label="🔍 Pesquisar Jogo", style=discord.ButtonStyle.success, custom_id="btn_search_game", row=1)
+    async def btn_pesquisar(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(ModalPesquisa())
+
+    @button(label="❌ Limpar Busca", style=discord.ButtonStyle.danger, custom_id="btn_clear_search", disabled=True, row=1)
+    async def btn_limpar_busca(self, interaction: discord.Interaction, button: Button):
+        nova_view = DropdownView(pagina=1, termo_busca=None)
+        await interaction.response.edit_message(view=nova_view)
+
+    @button(label="◀️ Anterior", style=discord.ButtonStyle.primary, custom_id="btn_prev_page", row=2)
     async def btn_anterior(self, interaction: discord.Interaction, button: Button):
         if self.pagina > 1:
             self.pagina -= 1
-            nova_view = DropdownView(self.pagina)
+            nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
-    @button(label="Página 1/1", style=discord.ButtonStyle.secondary, disabled=True, custom_id="btn_page_indicator")
+    @button(label="Página 1/1", style=discord.ButtonStyle.secondary, disabled=True, custom_id="btn_page_indicator", row=2)
     async def btn_indicador(self, interaction: discord.Interaction, button: Button):
         pass
 
-    @button(label="Próximo ▶️", style=discord.ButtonStyle.primary, custom_id="btn_next_page")
+    @button(label="Próximo ▶️", style=discord.ButtonStyle.primary, custom_id="btn_next_page", row=2)
     async def btn_proximo(self, interaction: discord.Interaction, button: Button):
         if self.pagina < self.total_paginas:
             self.pagina += 1
-            nova_view = DropdownView(self.pagina)
+            nova_view = DropdownView(self.pagina, self.termo_busca)
             await interaction.response.edit_message(view=nova_view)
 
 @bot.event
@@ -146,7 +182,7 @@ async def enviar_menu(ctx):
     
     embed = discord.Embed(
         title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada. Use os botões abaixo para navegar pelas páginas.",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões para navegar pelas páginas ou clique em **🔍 Pesquisar Jogo** para buscar diretamente.",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
