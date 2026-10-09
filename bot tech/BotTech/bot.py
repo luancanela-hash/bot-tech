@@ -188,4 +188,38 @@ async def enviar_menu(ctx):
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
 
+@bot.command()
+async def streamar(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    embed = discord.Embed(
+        title="🔴 Transmissão Iniciada!",
+        description=f"O utilizador **{ctx.author.name}** começou uma transmissão em direto!\n\n"
+                    f"🔗 **Clica no link abaixo para assistir:**\n"
+                    f"[Aceder à Sala Kosmi (kosmi.to/@luansantos2)](https://kosmi.to/@luansantos2)",
+        color=discord.Color.red()
+    )
+    embed.set_footer(text="Basta abrir pelo navegador para ver e interagir!")
+    await ctx.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def painel_stream(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    embed = discord.Embed(
+        title="🖥️ Transmissão de Tela & Co-op",
+        description="Para assistir ou acompanhar as transmissões de jogos e ecrã, clica no link abaixo para abrir a sala web:\n\n"
+                    "🔗 **Sala Kosmi:** [kosmi.to/@luansantos2](https://kosmi.to/@luansantos2)\n\n"
+                    "*Abre diretamente no navegador do teu PC ou telemóvel!*",
+        color=discord.Color.purple()
+    )
+    await ctx.send(embed=embed)
+
 bot.run(TOKEN)
