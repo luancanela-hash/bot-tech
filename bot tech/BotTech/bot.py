@@ -175,6 +175,21 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
+# --- BOTÃO PARA ENCERRAR A TRANSMISSÃO MANUALMENTE ---
+
+class StreamAvisoView(View):
+    def __init__(self):
+        super().__init__(timeout=7200) # Expira junto com o limite máximo
+
+    @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
+    async def fechar_stream(self, interaction: discord.Interaction, button: Button):
+        try:
+            await interaction.message.delete()
+            await interaction.response.send_message("🛑 Transmissão encerrada e aviso removido com sucesso!", ephemeral=True, delete_after=3)
+        except Exception:
+            await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
+
+
 # --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
 
 class SelectSalaKosmi(Select):
@@ -208,10 +223,10 @@ class SelectSalaKosmi(Select):
                         f"[Aceder à {dados_sala['nome']}]({dados_sala['url']})",
             color=discord.Color.red()
         )
-        embed.set_footer(text="Esta mensagem será apagada automaticamente após 5 minutos.")
+        embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
         
-        # Envia o aviso público no canal e agenda a exclusão automática em 5 minutos (300 segundos)
-        await interaction.channel.send(embed=embed, delete_after=300)
+        # Envia o aviso público com o botão de fechar e agenda exclusão automática em 2 horas (7200 segundos)
+        await interaction.channel.send(embed=embed, view=StreamAvisoView(), delete_after=7200)
         
         # Resposta privada temporária para confirmar a seleção
         await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
@@ -227,7 +242,7 @@ class StreamPainelView(View):
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
-    bot.add_view(StreamPainelView()) # Regista a view persistente das salas de stream
+    bot.add_view(StreamPainelView())
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
@@ -253,7 +268,6 @@ async def painel_stream(ctx):
     except:
         pass
         
-    # Monta a lista de salas visíveis no embed fixo
     descricao_salas = (
         "Para assistir ou acompanhar as transmissões, seleciona a tua sala no menu abaixo:\n\n"
     )
