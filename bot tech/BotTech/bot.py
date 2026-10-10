@@ -29,13 +29,38 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
-# --- MAPA DE SALAS KOSMI ---
+# --- MAPA DE SALAS KOSMI COM CORES E EMOJIS DIFERENTES ---
 SALAS_KOSMI = {
-    "1": {"nome": "Tech Ninjas Live [1]", "url": "https://app.kosmi.io/room/e8az5s"},
-    "2": {"nome": "Tech Ninjas Live [2]", "url": "https://app.kosmi.io/room/w276in"},
-    "3": {"nome": "Tech Ninjas Live [3]", "url": "https://app.kosmi.io/room/je33qq"},
-    "4": {"nome": "Tech Ninjas Live [4]", "url": "https://app.kosmi.io/room/4t50cc"},
-    "5": {"nome": "Tech Ninjas Live [5]", "url": "https://app.kosmi.io/room/ywu834"}
+    "1": {
+        "nome": "Tech Ninjas Live [1]",
+        "url": "https://app.kosmi.io/room/e8az5s",
+        "emoji": "🔴",
+        "cor": discord.Color.red()
+    },
+    "2": {
+        "nome": "Tech Ninjas Live [2]",
+        "url": "https://app.kosmi.io/room/w276in",
+        "emoji": "🔵",
+        "cor": discord.Color.blue()
+    },
+    "3": {
+        "nome": "Tech Ninjas Live [3]",
+        "url": "https://app.kosmi.io/room/je33qq",
+        "emoji": "🟢",
+        "cor": discord.Color.green()
+    },
+    "4": {
+        "nome": "Tech Ninjas Live [4]",
+        "url": "https://app.kosmi.io/room/4t50cc",
+        "emoji": "🟡",
+        "cor": discord.Color.gold()
+    },
+    "5": {
+        "nome": "Tech Ninjas Live [5]",
+        "url": "https://app.kosmi.io/room/ywu834",
+        "emoji": "🟣",
+        "cor": discord.Color.purple()
+    }
 }
 
 # --- SISTEMA DE JOGOS CO-OP ---
@@ -179,138 +204,4 @@ class DropdownView(View):
 
 class StreamAvisoView(View):
     def __init__(self):
-        super().__init__(timeout=7200)
-
-    @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
-    async def fechar_stream(self, interaction: discord.Interaction, button: Button):
-        try:
-            await interaction.message.delete()
-            await interaction.response.send_message("🛑 Transmissão encerrada e aviso removido com sucesso!", ephemeral=True, delete_after=3)
-        except Exception:
-            await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
-
-
-# --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
-
-class SelectSalaKosmi(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Tech Ninjas Live [1]", description="Iniciar transmissão na sala 1", emoji="🔴", value="1"),
-            discord.SelectOption(label="Tech Ninjas Live [2]", description="Iniciar transmissão na sala 2", emoji="🔴", value="2"),
-            discord.SelectOption(label="Tech Ninjas Live [3]", description="Iniciar transmissão na sala 3", emoji="🔴", value="3"),
-            discord.SelectOption(label="Tech Ninjas Live [4]", description="Iniciar transmissão na sala 4", emoji="🔴", value="4"),
-            discord.SelectOption(label="Tech Ninjas Live [5]", description="Iniciar transmissão na sala 5", emoji="🔴", value="5"),
-        ]
-        super().__init__(
-            placeholder="Selecione a sala para iniciar transmissão...",
-            min_values=1,
-            max_values=1,
-            options=options,
-            custom_id="select_sala_kosmi_fixo"
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        sala_id = self.values[0]
-        dados_sala = SALAS_KOSMI.get(sala_id)
-
-        if not dados_sala:
-            return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
-
-        embed = discord.Embed(
-            title=f"🔴 Transmissão Iniciada ({dados_sala['nome']})!",
-            description=f"O utilizador **{interaction.user.name}** começou uma transmissão em direto!\n\n"
-                        f"🔗 **Clica no link abaixo para assistir:**\n"
-                        f"[Entrar em {dados_sala['nome']}]({dados_sala['url']})",
-            color=discord.Color.red()
-        )
-        embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
-        
-        await interaction.channel.send(embed=embed, view=StreamAvisoView(), delete_after=7200)
-        await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
-
-        async def resetar_painel_stream():
-            await asyncio.sleep(15)
-            try:
-                await interaction.message.edit(view=StreamPainelView())
-            except Exception:
-                pass
-
-        asyncio.create_task(resetar_painel_stream())
-
-class StreamPainelView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(SelectSalaKosmi())
-
-
-# --- EVENTOS E COMANDOS DO BOT ---
-
-@bot.event
-async def on_ready():
-    bot.add_view(DropdownView())
-    bot.add_view(StreamPainelView())
-    print(f'Bot online como {bot.user.name}')
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def enviar_menu(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    embed = discord.Embed(
-        title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões ◀️▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
-        color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed, view=DropdownView(pagina=1))
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def painel_stream(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-        
-    embed = discord.Embed(
-        title="🖥️ Painel de Transmissões - Tech Ninjas",
-        description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
-        color=discord.Color.purple()
-    )
-    await ctx.send(embed=embed, view=StreamPainelView())
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def comandos(ctx):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    embed = discord.Embed(
-        title="🛠️ Painel de Ajuda - Comandos do Administrador",
-        description="Aqui tens a lista de todos os comandos administrativos disponíveis no bot:",
-        color=discord.Color.gold()
-    )
-    embed.add_field(
-        name="`!enviar_menu`",
-        value="Envia o painel interativo de seleção de Jogos Co-op com suporte a paginação e pesquisa de arquivos `.torrent`.",
-        inline=False
-    )
-    embed.add_field(
-        name="`!painel_stream`",
-        value="Envia o painel limpo com a descrição e o menu suspenso para iniciar avisos de transmissão.",
-        inline=False
-    )
-    embed.add_field(
-        name="`!comandos`",
-        value="Mostra esta lista de ajuda administrativa.",
-        inline=False
-    )
-    embed.set_footer(text="Esta mensagem desaparecerá automaticamente após 30 segundos.")
-
-    await ctx.send(embed=embed, delete_after=30)
-
-bot.run(TOKEN)
+        super().__init__(timeout=7200
