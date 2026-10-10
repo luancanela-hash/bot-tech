@@ -260,13 +260,13 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # VERIFICAÇÃO DE SEGURANÇA: A sala já está a ser usada?
+        # VERIFICAÇÃO DE SEGURANÇA: A sala já está a ser usada? (Deleta o aviso em 10 segundos)
         if sala_id in SALAS_EM_USO:
             dono_atual = SALAS_EM_USO[sala_id]
             return await interaction.response.send_message(
                 f"⚠️ Esta sala já está sendo usada pelo **{dono_atual}**! Escolha outra sala disponível.",
                 ephemeral=True,
-                delete_after=6
+                delete_after=10
             )
 
         # Regista a sala como ocupada por este utilizador
