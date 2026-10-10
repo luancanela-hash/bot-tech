@@ -268,7 +268,7 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado e direto para quem abriu (com destaque visual e instrução clara)
+        # 2. Aviso privado e direto para quem abriu
         await interaction.response.send_message(
             content=f"🖥️ **Aqui está a sua sala!** Entre nela e compartilhe a tela para seus amigos:\n"
                     f"👉 **[{dados_sala['nome']}]({dados_sala['url']})**",
@@ -324,7 +324,7 @@ async def painel_stream(ctx):
     embed = discord.Embed(
         title="🖥️ Painel de Transmissões - Tech Ninjas",
         description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
-        color=discord.Color.purple()
+        color=discord.Color.orange()  # Alterado para Laranja para não repetir cores!
     )
     await ctx.send(embed=embed, view=StreamPainelView())
 
