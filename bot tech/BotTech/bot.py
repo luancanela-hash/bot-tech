@@ -209,7 +209,6 @@ class StreamAvisoView(View):
 
     @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
-        # Verifica se quem clicou é o streamer original ou um Administrador do servidor
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
         if interaction.user.id != self.author_id and not is_admin:
@@ -253,22 +252,28 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        embed = discord.Embed(
+        # 1. Mensagem pública no chat com o nome do utilizador em destaque
+        embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} Transmissão Iniciada ({dados_sala['nome']})!",
-            description=f"O utilizador **{interaction.user.name}** começou uma transmissão em direto!\n\n"
+            description=f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão em direto!\n\n"
                         f"🔗 **Clica no link abaixo para assistir:**\n"
                         f"[Entrar em {dados_sala['nome']}]({dados_sala['url']})",
             color=dados_sala["cor"]
         )
-        embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
+        embed_publico.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
         
-        # Passa o ID do utilizador que iniciou a transmissão para a View do aviso
         await interaction.channel.send(
-            embed=embed,
+            embed=embed_publico,
             view=StreamAvisoView(author_id=interaction.user.id),
             delete_after=7200
         )
-        await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
+
+        # 2. Aviso privado e direto para quem abriu (com destaque visual e instrução clara)
+        await interaction.response.send_message(
+            content=f"🖥️ **Aqui está a sua sala!** Entre nela e compartilhe a tela para seus amigos:\n"
+                    f"👉 **[{dados_sala['nome']}]({dados_sala['url']})**",
+            ephemeral=True
+        )
 
         async def resetar_painel_stream():
             await asyncio.sleep(15)
