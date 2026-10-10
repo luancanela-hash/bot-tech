@@ -252,7 +252,7 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # 1. Mensagem pública no chat (usando a cor e emoji corretos da sala)
+        # 1. Mensagem pública no chat
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']}  TRANSMISSÃO INICIADA  ({dados_sala['nome']})",
             description=(
@@ -272,7 +272,7 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado garantindo explicitamente a cor exata (`dados_sala["cor"]`) e o emoji da sala selecionada
+        # 2. Aviso privado com tempo ajustado para 2 minutos (120 segundos)
         embed_privado = discord.Embed(
             title="🚀  S U A  S A L A  E S T Á  P R O N T A !",
             description=(
@@ -282,12 +282,12 @@ class SelectSalaKosmi(Select):
             ),
             color=dados_sala["cor"]
         )
-        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 30 segundos.")
+        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 2 minutos.")
 
         await interaction.response.send_message(
             embed=embed_privado,
             ephemeral=True,
-            delete_after=30
+            delete_after=120  # 120 segundos = 2 minutos
         )
 
         async def resetar_painel_stream():
