@@ -272,15 +272,15 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado e exclusivo em Embed colorido (destacado em verde sucesso) para quem transmitiu
+        # 2. Aviso privado em Embed com a cor amarela neon (#F7FF00)
         embed_privado = discord.Embed(
             title="🚀  S U A  S A L A  E S T Á  P R O N T A !",
             description=(
                 f"Clique no link abaixo para acessar o seu espaço:\n\n"
                 f"👉  **[{dados_sala['nome']}](<{dados_sala['url']}>)**\n\n"
-                f"🟢  **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+                f"⭐  **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
-            color=discord.Color.green()
+            color=discord.Color(0xF7FF00)  # Cor Amarela Neon / Limão (#F7FF00)
         )
         embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 30 segundos.")
 
