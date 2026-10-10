@@ -255,7 +255,7 @@ class SelectSalaKosmi(Select):
         # 1. Mensagem pública no chat para os amigos entrarem
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} Transmissão Iniciada ({dados_sala['nome']})!",
-            description=f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão em direto!\n\n"
+            description=f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão de tela!\n\n"
                         f"🔗 **Clica no link abaixo para assistir:**\n"
                         f"[Entrar em {dados_sala['nome']}]({dados_sala['url']})",
             color=dados_sala["cor"]
