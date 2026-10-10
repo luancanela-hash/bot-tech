@@ -252,7 +252,7 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # 1. Mensagem pública no chat
+        # 1. Mensagem pública no chat (usando a cor e emoji corretos da sala)
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']}  TRANSMISSÃO INICIADA  ({dados_sala['nome']})",
             description=(
@@ -272,15 +272,15 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado em Embed com a cor amarela neon (#F7FF00)
+        # 2. Aviso privado garantindo explicitamente a cor exata (`dados_sala["cor"]`) e o emoji da sala selecionada
         embed_privado = discord.Embed(
             title="🚀  S U A  S A L A  E S T Á  P R O N T A !",
             description=(
                 f"Clique no link abaixo para acessar o seu espaço:\n\n"
                 f"👉  **[{dados_sala['nome']}](<{dados_sala['url']}>)**\n\n"
-                f"⭐  **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+                f"{dados_sala['emoji']}  **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
-            color=discord.Color(0xF7FF00)  # Cor Amarela Neon / Limão (#F7FF00)
+            color=dados_sala["cor"]
         )
         embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 30 segundos.")
 
