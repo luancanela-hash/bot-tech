@@ -252,7 +252,7 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # 1. Mensagem pública no chat com bastante espaçamento e destaque visual (sem pré-visualização feia)
+        # 1. Mensagem pública no chat
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']}  TRANSMISSÃO INICIADA  ({dados_sala['nome']})",
             description=(
@@ -272,15 +272,20 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado e exclusivo para quem transmitiu (com novo título chamativo, apaga em 30s)
-        await interaction.response.send_message(
-            content=(
-                f"🚀  **S U A  S A L A  E S T Á  P R O N T A !**  🚀\n\n"
+        # 2. Aviso privado e exclusivo em Embed colorido (destacado em verde sucesso) para quem transmitiu
+        embed_privado = discord.Embed(
+            title="🚀  S U A  S A L A  E S T Á  P R O N T A !",
+            description=(
                 f"Clique no link abaixo para acessar o seu espaço:\n\n"
                 f"👉  **[{dados_sala['nome']}](<{dados_sala['url']}>)**\n\n"
-                f"Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!\n\n"
-                f"*(Esta mensagem privada desaparecerá automaticamente em 30 segundos)*"
+                f"🟢  **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
+            color=discord.Color.green()
+        )
+        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 30 segundos.")
+
+        await interaction.response.send_message(
+            embed=embed_privado,
             ephemeral=True,
             delete_after=30
         )
