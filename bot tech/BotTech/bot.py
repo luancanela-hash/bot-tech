@@ -252,12 +252,16 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # 1. Mensagem pública no chat para os amigos entrarem
+        # 1. Mensagem pública no chat com bastante espaçamento e destaque visual (sem pré-visualização feia)
         embed_publico = discord.Embed(
-            title=f"{dados_sala['emoji']} Transmissão Iniciada ({dados_sala['nome']})!",
-            description=f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão de tela!\n\n"
-                        f"🔗 **Clica no link abaixo para assistir:**\n"
-                        f"[Entrar em {dados_sala['nome']}]({dados_sala['url']})",
+            title=f"{dados_sala['emoji']}  TRANSMISSÃO INICIADA  ({dados_sala['nome']})",
+            description=(
+                f"🎮  **{interaction.user.mention}** acabou de iniciar uma transmissão!\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔗  **Clica no link abaixo para entrar e assistir:**\n"
+                f"👉  **[{dados_sala['nome']}](<{dados_sala['url']}>)**\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            ),
             color=dados_sala["cor"]
         )
         embed_publico.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
@@ -268,10 +272,15 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado e exclusivo para quem transmitiu (apaga sozinho após 30 segundos)
+        # 2. Aviso privado e exclusivo para quem transmitiu (com super espaçamento e sem embed feio, apaga em 30s)
         await interaction.response.send_message(
-            content=f"🖥️ **Aqui está a sua sala!** Entre nela e compartilhe a tela para seus amigos:\n"
-                    f"👉 **[{dados_sala['nome']}]({dados_sala['url']})**",
+            content=(
+                f"🖥️  **A T E N Ç Ã O  AOS  COMANDOS**  🖥️\n\n"
+                f"Aqui está a sua sala exclusiva para transmitir:\n\n"
+                f"👉  **[{dados_sala['nome']}](<{dados_sala['url']}>)**\n\n"
+                f"Entre nela, abra a sua partilha de ecrã e divirta-se com os amigos!\n"
+                f"*(Esta mensagem privada desaparecerá automaticamente em 30 segundos)*"
+            ),
             ephemeral=True,
             delete_after=30
         )
