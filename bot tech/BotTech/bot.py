@@ -200,14 +200,25 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
-# --- BOTÃO PARA ENCERRAR A TRANSMISSÃO MANUALMENTE ---
+# --- BOTÃO PARA ENCERRAR A TRANSMISSÃO (APENAS O STREAMER OU ADMIN) ---
 
 class StreamAvisoView(View):
-    def __init__(self):
+    def __init__(self, author_id: int):
         super().__init__(timeout=7200)
+        self.author_id = author_id
 
     @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
+        # Verifica se quem clicou é o streamer original ou um Administrador do servidor
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+
+        if interaction.user.id != self.author_id and not is_admin:
+            return await interaction.response.send_message(
+                "⚠️ Apenas o utilizador que iniciou esta transmissão (ou um Administrador) pode encerrá-la!",
+                ephemeral=True,
+                delete_after=5
+            )
+
         try:
             await interaction.message.delete()
             await interaction.response.send_message("🛑 Transmissão encerrada e aviso removido com sucesso!", ephemeral=True, delete_after=3)
@@ -251,7 +262,12 @@ class SelectSalaKosmi(Select):
         )
         embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
         
-        await interaction.channel.send(embed=embed, view=StreamAvisoView(), delete_after=7200)
+        # Passa o ID do utilizador que iniciou a transmissão para a View do aviso
+        await interaction.channel.send(
+            embed=embed,
+            view=StreamAvisoView(author_id=interaction.user.id),
+            delete_after=7200
+        )
         await interaction.response.send_message(f"✅ Aviso enviado para a **{dados_sala['nome']}** com sucesso!", ephemeral=True, delete_after=3)
 
         async def resetar_painel_stream():
