@@ -220,7 +220,7 @@ class SelectSalaKosmi(Select):
             title=f"🔴 Transmissão Iniciada ({dados_sala['nome']})!",
             description=f"O utilizador **{interaction.user.name}** começou uma transmissão em direto!\n\n"
                         f"🔗 **Clica no link abaixo para assistir:**\n"
-                        f"[Aceder à {dados_sala['nome']}]({dados_sala['url']})",
+                        f"[Entrar em {dados_sala['nome']}]({dados_sala['url']})",
             color=discord.Color.red()
         )
         embed.set_footer(text="Clica no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
@@ -301,7 +301,7 @@ async def comandos(ctx):
     )
     embed.add_field(
         name="`!painel_stream`",
-        value="Envia o painel limpo com a nova descrição e o menu suspenso para iniciar avisos de transmissão.",
+        value="Envia o painel limpo com a descrição e o menu suspenso para iniciar avisos de transmissão.",
         inline=False
     )
     embed.add_field(
