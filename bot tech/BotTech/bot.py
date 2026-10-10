@@ -63,6 +63,9 @@ SALAS_KOSMI = {
     }
 }
 
+# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS (Guarda o ID do utilizador e o nome) ---
+SALAS_EM_USO = {}
+
 # --- SISTEMA DE JOGOS CO-OP ---
 
 class DropdownJogos(Select):
@@ -203,9 +206,10 @@ class DropdownView(View):
 # --- BOTÃO PARA ENCERRAR A TRANSMISSÃO (APENAS O STREAMER OU ADMIN) ---
 
 class StreamAvisoView(View):
-    def __init__(self, author_id: int):
+    def __init__(self, author_id: int, sala_id: str):
         super().__init__(timeout=7200)
         self.author_id = author_id
+        self.sala_id = sala_id
 
     @button(label="⏹️ Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
@@ -213,10 +217,14 @@ class StreamAvisoView(View):
 
         if interaction.user.id != self.author_id and not is_admin:
             return await interaction.response.send_message(
-                "⚠️ Apenas o usuário que iniciou esta transmissão (ou um Administrador) pode encerrá-la!",
+                "⚠️ Apenas o utilizador que iniciou esta transmissão (ou um Administrador) pode encerrá-la!",
                 ephemeral=True,
                 delete_after=5
             )
+
+        # Remove a sala do dicionário de ocupadas para voltar a ficar livre
+        if self.sala_id in SALAS_EM_USO:
+            del SALAS_EM_USO[self.sala_id]
 
         try:
             await interaction.message.delete()
@@ -252,6 +260,18 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
+        # VERIFICAÇÃO DE SEGURANÇA: A sala já está a ser usada?
+        if sala_id in SALAS_EM_USO:
+            dono_atual = SALAS_EM_USO[sala_id]
+            return await interaction.response.send_message(
+                f"⚠️ Esta sala já está sendo usada pelo **{dono_atual}**! Escolha outra sala disponível.",
+                ephemeral=True,
+                delete_after=6
+            )
+
+        # Regista a sala como ocupada por este utilizador
+        SALAS_EM_USO[sala_id] = interaction.user.display_name
+
         # 1. Mensagem pública no chat
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']}  TRANSMISSÃO INICIADA  ({dados_sala['nome']})",
@@ -266,13 +286,21 @@ class SelectSalaKosmi(Select):
         )
         embed_publico.set_footer(text="Clique no botão abaixo para encerrar ou a mensagem apagará automaticamente após 2 horas.")
         
-        await interaction.channel.send(
+        msg_publica = await interaction.channel.send(
             embed=embed_publico,
-            view=StreamAvisoView(author_id=interaction.user.id),
+            view=StreamAvisoView(author_id=interaction.user.id, sala_id=sala_id),
             delete_after=7200
         )
 
-        # 2. Aviso privado com tempo ajustado para 2 minutos (120 segundos)
+        # Tarefa em segundo plano para limpar a sala do dicionário caso o bot expire após 2 horas
+        async def limpar_sala_expirada():
+            await asyncio.sleep(7200)
+            if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == interaction.user.display_name:
+                del SALAS_EM_USO[sala_id]
+
+        asyncio.create_task(limpar_sala_expirada())
+
+        # 2. Aviso privado com a cor e emoji da sala selecionada (apaga em 2 minutos)
         embed_privado = discord.Embed(
             title="🚀  S U A  S A L A  E S T Á  P R O N T A !",
             description=(
@@ -287,7 +315,7 @@ class SelectSalaKosmi(Select):
         await interaction.response.send_message(
             embed=embed_privado,
             ephemeral=True,
-            delete_after=120  # 120 segundos = 2 minutos
+            delete_after=120
         )
 
         async def resetar_painel_stream():
