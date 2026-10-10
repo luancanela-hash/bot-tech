@@ -252,7 +252,7 @@ class SelectSalaKosmi(Select):
         if not dados_sala:
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
-        # 1. Mensagem pública no chat com o nome do utilizador em destaque
+        # 1. Mensagem pública no chat para os amigos entrarem
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} Transmissão Iniciada ({dados_sala['nome']})!",
             description=f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão em direto!\n\n"
@@ -268,11 +268,12 @@ class SelectSalaKosmi(Select):
             delete_after=7200
         )
 
-        # 2. Aviso privado e direto para quem abriu
+        # 2. Aviso privado e exclusivo para quem transmitiu (apaga sozinho após 30 segundos)
         await interaction.response.send_message(
             content=f"🖥️ **Aqui está a sua sala!** Entre nela e compartilhe a tela para seus amigos:\n"
                     f"👉 **[{dados_sala['nome']}]({dados_sala['url']})**",
-            ephemeral=True
+            ephemeral=True,
+            delete_after=30
         )
 
         async def resetar_painel_stream():
@@ -324,7 +325,7 @@ async def painel_stream(ctx):
     embed = discord.Embed(
         title="🖥️ Painel de Transmissões - Tech Ninjas",
         description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
-        color=discord.Color.orange()  # Alterado para Laranja para não repetir cores!
+        color=discord.Color.orange()
     )
     await ctx.send(embed=embed, view=StreamPainelView())
 
