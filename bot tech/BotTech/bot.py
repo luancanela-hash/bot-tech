@@ -285,8 +285,7 @@ class StreamPublicoView(View):
         )
         embed_regras.set_footer(text="Esta mensagem desaparecerá automaticamente após 3 minutos.")
         
-        # Enviado diretamente no canal com deleção automática de 3 minutos (180s)
-        msg_duvidas = await interaction.channel.send(
+        await interaction.channel.send(
             content=f"{interaction.user.mention}, aqui estão as dúvidas frequentes:",
             embed=embed_regras,
             delete_after=180
@@ -310,7 +309,7 @@ class StreamDonoView(View):
         timestamp_unix = int(self.stream_publico_view.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
-                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"🛠️ **Funções do Dono da Sala (<@{self.stream_publico_view.author_id}>):**\n\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
                 f"🎮 **Seu jogo:** *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
@@ -453,11 +452,11 @@ class SelectSalaKosmi(Select):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala com a mesma cor da sala)
+        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala com o nome/menção em destaque)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
-                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"🛠️ **Funções do Dono da Sala ({interaction.user.mention}):**\n\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
                 f"🎮 **Seu jogo:** *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
