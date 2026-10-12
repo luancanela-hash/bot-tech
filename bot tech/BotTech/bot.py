@@ -310,4 +310,232 @@ class StreamPublicoView(View):
             title="📋 Guia de Acesso ao Kosmi",
             description=(
                 "**Dicas para aproveitar a transmissão:**\n\n"
-                "1️⃣ **Assistir:** Clique em `Assistir live` para
+                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
+                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
+                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
+                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
+            ),
+            color=discord.Color.blue()
+        )
+        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 minutos.")
+        
+        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
+
+        await asyncio.sleep(180)
+        if user_id in self.usuarios_com_duvidas_aberto:
+            self.usuarios_com_duvidas_aberto.remove(user_id)
+
+    @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=1)
+    async def fechar_stream(self, interaction: discord.Interaction, button: Button):
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+
+        if interaction.user.id != self.author_id and not is_admin:
+            return await interaction.response.send_message(
+                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
+                ephemeral=True,
+                delete_after=5
+            )
+
+        if self.sala_id in SALAS_EM_USO:
+            del SALAS_EM_USO[self.sala_id]
+
+        try:
+            await interaction.message.delete()
+            await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
+        except Exception:
+            await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
+
+
+# --- VIEW PRIVADA (Apenas botão "Abrir sua live" - Timeout 2 Minutos) ---
+
+class StreamPrivadoView(View):
+    def __init__(self, url_sala: str):
+        super().__init__(timeout=120)  # 2 minutos
+        self.add_item(Button(
+            label="Abrir sua live",
+            url=url_sala,
+            style=discord.ButtonStyle.link,
+            emoji="🚀"
+        ))
+
+
+# --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
+
+class SelectSalaKosmi(Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=SALAS_KOSMI[s]["nome"],
+                description=f"Iniciar transmissão na sala {s}",
+                emoji=SALAS_KOSMI[s]["emoji"],
+                value=s
+            ) for s in SALAS_KOSMI
+        ]
+        super().__init__(
+            placeholder="Selecione a sala para iniciar transmissão...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="select_sala_kosmi_fixo"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        sala_id = self.values[0]
+        dados_sala = SALAS_KOSMI.get(sala_id)
+
+        if not dados_sala:
+            return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
+
+        if sala_id in SALAS_EM_USO:
+            dono_atual_id = SALAS_EM_USO[sala_id]
+            return await interaction.response.send_message(
+                f"⚠️ Esta sala já está sendo usada pelo(a) <@{dono_atual_id}>! Escolha outra sala disponível.",
+                ephemeral=True,
+                delete_after=10
+            )
+
+        SALAS_EM_USO[sala_id] = interaction.user.id
+
+        # 1. View interativa da Mensagem pública no chat
+        view_publica = StreamPublicoView(
+            author_id=interaction.user.id,
+            sala_id=sala_id,
+            url_sala=dados_sala['url'],
+            dados_sala=dados_sala
+        )
+
+        timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
+
+        embed_publico = discord.Embed(
+            title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
+            description=(
+                f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão na **{dados_sala['nome']}**!\n\n"
+                f"🕹️ **Transmitindo:** `Não especificado`\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>. *(Para estender a duração, utilize o botão **Prorrogar (+1h)**)*."
+            ),
+            color=dados_sala["cor"]
+        )
+
+        msg_publica = await interaction.channel.send(
+            embed=embed_publico,
+            view=view_publica,
+            delete_after=18000  # 5 horas padrão de retenção máxima no canal
+        )
+
+        # Limpeza automatizada
+        async def limpar_sala_expirada():
+            await asyncio.sleep(18000)
+            if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == interaction.user.id:
+                del SALAS_EM_USO[sala_id]
+            try:
+                await msg_publica.delete()
+            except Exception:
+                pass
+
+        asyncio.create_task(limpar_sala_expirada())
+
+        # 2. Aviso privado para quem iniciou a live
+        embed_privado = discord.Embed(
+            title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
+            description=(
+                f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+            ),
+            color=dados_sala["cor"]
+        )
+        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 2 minutos.")
+
+        await interaction.response.send_message(
+            embed=embed_privado,
+            view=StreamPrivadoView(url_sala=dados_sala['url']),
+            ephemeral=True,
+            delete_after=120
+        )
+
+        async def resetar_painel_stream():
+            await asyncio.sleep(15)
+            try:
+                await interaction.message.edit(view=StreamPainelView())
+            except Exception:
+                pass
+
+        asyncio.create_task(resetar_painel_stream())
+
+class StreamPainelView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(SelectSalaKosmi())
+
+
+# --- EVENTOS E COMANDOS DO BOT ---
+
+@bot.event
+async def on_ready():
+    bot.add_view(DropdownView())
+    bot.add_view(StreamPainelView())
+    print(f'Bot online como {bot.user.name}')
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def enviar_menu(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+    
+    embed = discord.Embed(
+        title="🎮 Jogos Co-op Liberados!",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões ◀️▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed, view=DropdownView(pagina=1))
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def painel_stream(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+        
+    embed = discord.Embed(
+        title="🖥️ Painel de Transmissões - Tech Ninjas",
+        description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
+        color=discord.Color.orange()
+    )
+    await ctx.send(embed=embed, view=StreamPainelView())
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def comandos(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    embed = discord.Embed(
+        title="🛠️ Painel de Ajuda - Comandos do Administrador",
+        description="Aqui tem a lista de todos os comandos administrativos disponíveis no bot:",
+        color=discord.Color.gold()
+    )
+    embed.add_field(
+        name="`!enviar_menu`",
+        value="Envia o painel interativo de seleção de Jogos Co-op com suporte a paginação e pesquisa de arquivos `.torrent`.",
+        inline=False
+    )
+    embed.add_field(
+        name="`!painel_stream`",
+        value="Envia o painel limpo com a descrição e o menu suspenso para iniciar avisos de transmissão.",
+        inline=False
+    )
+    embed.add_field(
+        name="`!comandos`",
+        value="Mostra esta lista de ajuda administrativa.",
+        inline=False
+    )
+    embed.set_footer(text="Esta mensagem desaparecerá automaticamente após 30 segundos.")
+
+    await ctx.send(embed=embed, delete_after=30)
+
+bot.run(TOKEN)
