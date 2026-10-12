@@ -231,15 +231,11 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
-# --- VIEW PÚBLICA (BOTÃO "Assistir live" primeiro + "Encerrar Transmissão" depois - Timeout 3 Horas) ---
+# --- VIEW PÚBLICA (Apenas botão "Assistir live" - Timeout 3 Horas) ---
 
-class StreamAvisoView(View):
-    def __init__(self, author_id: int, sala_id: str, url_sala: str):
-        super().__init__(timeout=10800)  # 3 horas (10800 segundos)
-        self.author_id = author_id
-        self.sala_id = sala_id
-
-        # 1. Botão de Link: Assistir live (Fica em primeiro lugar)
+class StreamPublicoView(View):
+    def __init__(self, url_sala: str):
+        super().__init__(timeout=10800)  # 3 horas
         self.add_item(Button(
             label="Assistir live",
             url=url_sala,
@@ -247,8 +243,26 @@ class StreamAvisoView(View):
             emoji="👀"
         ))
 
-    # 2. Botão de Ação: Encerrar Transmissão (Fica em segundo lugar)
-    @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso", emoji="⏹️")
+
+# --- VIEW PRIVADA (Botão "Abrir sua live" + "Encerrar Transmissão" - Timeout 3 Horas) ---
+
+class StreamPrivadoView(View):
+    def __init__(self, author_id: int, sala_id: str, url_sala: str, bot_instance):
+        super().__init__(timeout=10800)  # 3 horas
+        self.author_id = author_id
+        self.sala_id = sala_id
+        self.bot_instance = bot_instance
+
+        # 1. Botão para Abrir a Live
+        self.add_item(Button(
+            label="Abrir sua live",
+            url=url_sala,
+            style=discord.ButtonStyle.link,
+            emoji="🚀"
+        ))
+
+    # 2. Botão para Encerrar Transmissão
+    @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_privado", emoji="⏹️")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
@@ -263,8 +277,9 @@ class StreamAvisoView(View):
             del SALAS_EM_USO[self.sala_id]
 
         try:
+            # Apaga a mensagem privada e tenta apagar também a mensagem pública correspondente se possível
             await interaction.message.delete()
-            await interaction.response.send_message("🛑 Transmissão encerrada e aviso removido com sucesso!", ephemeral=True, delete_after=3)
+            await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
         except Exception:
             await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
 
@@ -306,7 +321,7 @@ class SelectSalaKosmi(Select):
 
         SALAS_EM_USO[sala_id] = interaction.user.display_name
 
-        # 1. Mensagem pública no chat (Com Botão Assistir live primeiro e duração de 3 horas)
+        # 1. Mensagem pública no chat (Apenas com botão Assistir live - Expira em 3 horas)
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA ({dados_sala['nome']})",
             description=(
@@ -317,11 +332,11 @@ class SelectSalaKosmi(Select):
             ),
             color=dados_sala["cor"]
         )
-        embed_publico.set_footer(text="Clique no botão de encerrar para finalizar ou a mensagem apagará automaticamente após 3 horas.")
+        embed_publico.set_footer(text="Esta mensagem apagará automaticamente após 3 horas.")
         
         msg_publica = await interaction.channel.send(
             embed=embed_publico,
-            view=StreamAvisoView(author_id=interaction.user.id, sala_id=sala_id, url_sala=dados_sala['url']),
+            view=StreamPublicoView(url_sala=dados_sala['url']),
             delete_after=10800  # 3 horas
         )
 
@@ -330,33 +345,29 @@ class SelectSalaKosmi(Select):
             await asyncio.sleep(10800)
             if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == interaction.user.display_name:
                 del SALAS_EM_USO[sala_id]
+            try:
+                await msg_publica.delete()
+            except:
+                pass
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com Botão "Abrir sua live" (apaga em 2 minutos)
+        # 2. Aviso privado com os botões "Abrir sua live" e "Encerrar Transmissão" (Expira em 3 horas / 10800s)
         embed_privado = discord.Embed(
-            title="🚀 S U A S A L A E S T Á P R O N T A !",
+            title="🚀 S U A  S A L A  E S T Á  P R O N T A !",
             description=(
                 f"Clique no botão abaixo para acessar o seu espaço:\n\n"
                 f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
             color=dados_sala["cor"]
         )
-        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente em 2 minutos.")
-
-        view_privada = View()
-        view_privada.add_item(Button(
-            label="Abrir sua live",
-            url=dados_sala['url'],
-            style=discord.ButtonStyle.link,
-            emoji="👉"
-        ))
+        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 horas.")
 
         await interaction.response.send_message(
             embed=embed_privado,
-            view=view_privada,
+            view=StreamPrivadoView(author_id=interaction.user.id, sala_id=sala_id, url_sala=dados_sala['url'], bot_instance=bot),
             ephemeral=True,
-            delete_after=120
+            delete_after=10800  # 3 horas
         )
 
         async def resetar_painel_stream():
