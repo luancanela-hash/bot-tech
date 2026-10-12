@@ -229,6 +229,7 @@ class StreamPublicoView(View):
         
         self.jogo_atual = "Não especificado"
         self.horas_totais = 3
+        self.usuarios_com_duvidas_aberto = set()
 
         # Row 0: Botão de Link direto para Assistir
         self.add_item(Button(
@@ -254,7 +255,7 @@ class StreamPublicoView(View):
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    # --- BOTÕES DA LINHA 1 (SEQUÊNCIA SOLICITADA) ---
+    # --- BOTÕES DA LINHA 1 ---
 
     @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=1)
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
@@ -278,6 +279,17 @@ class StreamPublicoView(View):
 
     @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=1)
     async def btn_regras(self, interaction: discord.Interaction, button: Button):
+        user_id = interaction.user.id
+
+        if user_id in self.usuarios_com_duvidas_aberto:
+            return await interaction.response.send_message(
+                "⚠️ Já existe uma guia de dúvidas aberta! Verifique a mensagem temporária acima!",
+                ephemeral=True,
+                delete_after=4
+            )
+
+        self.usuarios_com_duvidas_aberto.add(user_id)
+
         embed_regras = discord.Embed(
             title="📋 Guia de Acesso ao Kosmi",
             description=(
@@ -289,7 +301,13 @@ class StreamPublicoView(View):
             ),
             color=discord.Color.blue()
         )
+        
         await interaction.response.send_message(embed=embed_regras, ephemeral=True)
+
+        # Libera o usuário para clicar novamente após 2 minutos
+        await asyncio.sleep(120)
+        if user_id in self.usuarios_com_duvidas_aberto:
+            self.usuarios_com_duvidas_aberto.remove(user_id)
 
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=1)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
@@ -404,8 +422,7 @@ class SelectSalaKosmi(Select):
         embed_privado = discord.Embed(
             title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"Clique no botão abaixo para acessar o seu espaço:\n\n"
-                f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+                f"Kelven, {dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
             color=dados_sala["cor"]
         )
