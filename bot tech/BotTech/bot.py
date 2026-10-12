@@ -231,7 +231,7 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
-# --- VIEW PÚBLICA (BOTÃO "Assistir Tela" + "Encerrar Transmissão" - Timeout 3 Horas) ---
+# --- VIEW PÚBLICA (BOTÃO "Assistir live" primeiro + "Encerrar Transmissão" depois - Timeout 3 Horas) ---
 
 class StreamAvisoView(View):
     def __init__(self, author_id: int, sala_id: str, url_sala: str):
@@ -239,14 +239,15 @@ class StreamAvisoView(View):
         self.author_id = author_id
         self.sala_id = sala_id
 
-        # Botão de Link: Assistir Tela
+        # 1. Botão de Link: Assistir live (Fica em primeiro lugar)
         self.add_item(Button(
-            label="Assistir Tela",
+            label="Assistir live",
             url=url_sala,
             style=discord.ButtonStyle.link,
-            emoji="👉"
+            emoji="👀"
         ))
 
+    # 2. Botão de Ação: Encerrar Transmissão (Fica em segundo lugar)
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, custom_id="btn_fechar_stream_aviso", emoji="⏹️")
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
@@ -305,7 +306,7 @@ class SelectSalaKosmi(Select):
 
         SALAS_EM_USO[sala_id] = interaction.user.display_name
 
-        # 1. Mensagem pública no chat (Com Botão Assistir Tela e duração de 3 horas)
+        # 1. Mensagem pública no chat (Com Botão Assistir live primeiro e duração de 3 horas)
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA ({dados_sala['nome']})",
             description=(
