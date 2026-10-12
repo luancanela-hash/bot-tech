@@ -93,7 +93,7 @@ SALAS_KOSMI = {
     }
 }
 
-# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS (Armazena o ID do usuário) ---
+# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS ---
 SALAS_EM_USO = {}
 
 # --- SISTEMA DE JOGOS CO-OP ---
@@ -323,7 +323,7 @@ class SelectSalaKosmi(Select):
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA ({dados_sala['nome']})",
             description=(
-                f"🎮 **{interaction.user.mention}** acabou de iniciar uma transmissão!\n\n"
+                f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão!\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"Clique no botão abaixo para entrar e assistir.\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -350,7 +350,7 @@ class SelectSalaKosmi(Select):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com NOME DO USUÁRIO destacado no título e o botão "Abrir sua live" (Expira em 2 minutos)
+        # 2. Aviso privado com NOME DO USUÁRIO destacado no título (com caixinha azul correta) e o botão "Abrir sua live" (Expira em 2 minutos)
         embed_privado = discord.Embed(
             title=f"🚀 {interaction.user.mention}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
