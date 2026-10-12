@@ -29,13 +29,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
-# --- MAPA DE 10 SALAS KOSMI COM CORES E EMOJIS DIFERENTES ---
+# --- MAPA DE 5 SALAS KOSMI REVISADO ---
 SALAS_KOSMI = {
     "1": {
         "nome": "Tech Ninjas Live [1]",
-        "url": "https://app.kosmi.io/room/e8az5s",
-        "emoji": "🔴",
-        "cor": discord.Color.red()
+        "url": "https://app.kosmi.io/room/f8m0ed",
+        "emoji": "⭐",
+        "cor": discord.Color.teal()
     },
     "2": {
         "nome": "Tech Ninjas Live [2]",
@@ -45,7 +45,7 @@ SALAS_KOSMI = {
     },
     "3": {
         "nome": "Tech Ninjas Live [3]",
-        "url": "https://app.kosmi.io/room/je33qq",
+        "url": "https://app.kosmi.io/room/obybsv",
         "emoji": "🟢",
         "cor": discord.Color.green()
     },
@@ -60,36 +60,6 @@ SALAS_KOSMI = {
         "url": "https://app.kosmi.io/room/ywu834",
         "emoji": "🟣",
         "cor": discord.Color.purple()
-    },
-    "6": {
-        "nome": "Tech Ninjas Live [6]",
-        "url": "https://app.kosmi.io/room/z2ahlf",
-        "emoji": "🟠",
-        "cor": discord.Color.orange()
-    },
-    "7": {
-        "nome": "Tech Ninjas Live [7]",
-        "url": "https://app.kosmi.io/room/bc5dj3",
-        "emoji": "⚪",
-        "cor": discord.Color.light_grey()
-    },
-    "8": {
-        "nome": "Tech Ninjas Live [8]",
-        "url": "https://app.kosmi.io/room/cbwzyj",
-        "emoji": "🟤",
-        "cor": discord.Color.dark_orange()
-    },
-    "9": {
-        "nome": "Tech Ninjas Live [9]",
-        "url": "https://app.kosmi.io/room/nesd3r",
-        "emoji": "🖤",
-        "cor": discord.Color.dark_grey()
-    },
-    "10": {
-        "nome": "Tech Ninjas Live [10]",
-        "url": "https://app.kosmi.io/room/pz2hjq",
-        "emoji": "⭐",
-        "cor": discord.Color.teal()
     }
 }
 
