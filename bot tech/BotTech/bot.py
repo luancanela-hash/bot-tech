@@ -244,14 +244,14 @@ class StreamPublicoView(View):
         ))
 
 
-# --- VIEW PRIVADA (Botão "Abrir sua live" + "Encerrar Transmissão" - Timeout 3 Horas) ---
+# --- VIEW PRIVADA (Botão "Abrir sua live" + "Encerrar Transmissão") ---
 
 class StreamPrivadoView(View):
-    def __init__(self, author_id: int, sala_id: str, url_sala: str, bot_instance):
+    def __init__(self, author_id: int, sala_id: str, url_sala: str, msg_publica: discord.Message):
         super().__init__(timeout=10800)  # 3 horas
         self.author_id = author_id
         self.sala_id = sala_id
-        self.bot_instance = bot_instance
+        self.msg_publica = msg_publica
 
         # 1. Botão para Abrir a Live
         self.add_item(Button(
@@ -273,14 +273,24 @@ class StreamPrivadoView(View):
                 delete_after=5
             )
 
+        # Libera a sala no dicionário
         if self.sala_id in SALAS_EM_USO:
             del SALAS_EM_USO[self.sala_id]
 
+        # Apaga a mensagem pública do canal se ainda existir
         try:
-            await interaction.message.delete()
-            await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
+            if self.msg_publica:
+                await self.msg_publica.delete()
         except Exception:
-            await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
+            pass
+
+        # Atualiza a mensagem privada efêmera para avisar que a transmissão foi encerrada
+        embed_encerrado = discord.Embed(
+            title="🛑 TRANSMISSÃO ENCERRADA",
+            description=f"A sua transmissão na **{SALAS_KOSMI[self.sala_id]['nome']}** foi finalizada com sucesso e a sala foi liberada!",
+            color=discord.Color.dark_gray()
+        )
+        await interaction.response.edit_message(embed=embed_encerrado, view=None)
 
 
 # --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
@@ -364,7 +374,7 @@ class SelectSalaKosmi(Select):
 
         await interaction.response.send_message(
             embed=embed_privado,
-            view=StreamPrivadoView(author_id=interaction.user.id, sala_id=sala_id, url_sala=dados_sala['url'], bot_instance=bot),
+            view=StreamPrivadoView(author_id=interaction.user.id, sala_id=sala_id, url_sala=dados_sala['url'], msg_publica=msg_publica),
             ephemeral=True,
             delete_after=10800  # 3 horas
         )
