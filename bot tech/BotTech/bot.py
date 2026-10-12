@@ -301,11 +301,12 @@ class StreamPublicoView(View):
             ),
             color=discord.Color.blue()
         )
+        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 2 minutos.")
         
         await interaction.response.send_message(embed=embed_regras, ephemeral=True)
 
-        # Libera o usuário para clicar novamente após 2 minutos
-        await asyncio.sleep(120)
+        # Libera o usuário para clicar novamente após 15 segundos
+        await asyncio.sleep(15)
         if user_id in self.usuarios_com_duvidas_aberto:
             self.usuarios_com_duvidas_aberto.remove(user_id)
 
@@ -422,7 +423,7 @@ class SelectSalaKosmi(Select):
         embed_privado = discord.Embed(
             title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"Kelven, {dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+                f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
             color=dados_sala["cor"]
         )
