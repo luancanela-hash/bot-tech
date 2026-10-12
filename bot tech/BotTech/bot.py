@@ -350,11 +350,10 @@ class SelectSalaKosmi(Select):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com Título limpo e menção correta na descrição (Expira em 2 minutos)
+        # 2. Aviso privado com o nome limpo do usuário no título e o botão "Abrir sua live" (Expira em 2 minutos)
         embed_privado = discord.Embed(
-            title="🚀 S U A  S A L A  E S T Á  P R O N T A !",
+            title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"Olá {interaction.user.mention}!\n\n"
                 f"Clique no botão abaixo para acessar o seu espaço:\n\n"
                 f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
