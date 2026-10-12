@@ -283,9 +283,16 @@ class StreamPublicoView(View):
             ),
             color=discord.Color.blue()
         )
-        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 minutos.")
+        embed_regras.set_footer(text="Esta mensagem desaparecerá automaticamente após 3 minutos.")
         
-        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
+        # Enviado diretamente no canal com deleção automática de 3 minutos (180s)
+        msg_duvidas = await interaction.channel.send(
+            content=f"{interaction.user.mention}, aqui estão as dúvidas frequentes:",
+            embed=embed_regras,
+            delete_after=180
+        )
+        
+        await interaction.response.send_message("📋 Guia de dúvidas enviado abaixo!", ephemeral=True, delete_after=3)
 
         await asyncio.sleep(180)
         if user_id in self.usuarios_com_duvidas_aberto:
