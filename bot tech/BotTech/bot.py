@@ -261,7 +261,11 @@ class StreamPublicoView(View):
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         if interaction.user.id != self.author_id and not is_admin:
-            return await interaction.response.send_message("⚠️ Apenas o criador da live (ou Administrador) pode alterar o jogo!", ephemeral=True, delete_after=5)
+            return await interaction.response.send_message(
+                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode alterar o jogo!",
+                ephemeral=True,
+                delete_after=5
+            )
         
         modal = ModalDefinirJogo()
         modal.view = self
@@ -271,7 +275,11 @@ class StreamPublicoView(View):
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         if interaction.user.id != self.author_id and not is_admin:
-            return await interaction.response.send_message("⚠️ Apenas o criador da live (ou Administrador) pode prorrogar a duração!", ephemeral=True, delete_after=5)
+            return await interaction.response.send_message(
+                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
+                ephemeral=True,
+                delete_after=5
+            )
 
         if self.horas_totais >= 6:
             return await interaction.response.send_message("⚠️ A transmissão já atingiu o limite máximo permitido de **6 horas**!", ephemeral=True, delete_after=5)
@@ -304,12 +312,12 @@ class StreamPublicoView(View):
             ),
             color=discord.Color.blue()
         )
-        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 2 minutos.")
+        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 minutos.")
         
         await interaction.response.send_message(embed=embed_regras, ephemeral=True)
 
-        # Libera o usuário para clicar novamente após 15 segundos
-        await asyncio.sleep(15)
+        # Libera o botão novamente após 3 minutos (180s)
+        await asyncio.sleep(180)
         if user_id in self.usuarios_com_duvidas_aberto:
             self.usuarios_com_duvidas_aberto.remove(user_id)
 
