@@ -262,7 +262,7 @@ class StreamPublicoView(View):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         if interaction.user.id != self.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode alterar o jogo!",
+                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode alterar o jogo!",
                 ephemeral=True,
                 delete_after=5
             )
@@ -276,7 +276,7 @@ class StreamPublicoView(View):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         if interaction.user.id != self.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
+                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
                 ephemeral=True,
                 delete_after=5
             )
@@ -316,7 +316,7 @@ class StreamPublicoView(View):
         
         await interaction.response.send_message(embed=embed_regras, ephemeral=True)
 
-        # Libera o botão novamente após 3 minutos (180s)
+        # Libera o usuário para clicar novamente após 3 minutos (180s)
         await asyncio.sleep(180)
         if user_id in self.usuarios_com_duvidas_aberto:
             self.usuarios_com_duvidas_aberto.remove(user_id)
@@ -327,7 +327,7 @@ class StreamPublicoView(View):
 
         if interaction.user.id != self.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
+                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
                 ephemeral=True,
                 delete_after=5
             )
