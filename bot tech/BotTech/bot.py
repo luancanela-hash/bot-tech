@@ -213,12 +213,12 @@ class ModalDefinirJogo(Modal, title="🎮 Definir Jogo / Atividade"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        view: StreamPublicoView = self.view
-        view.jogo_atual = self.nome_jogo.value
-        await view.atualizar_embed_publico(interaction)
+        view: StreamDonoView = self.view
+        view.stream_publico_view.jogo_atual = self.nome_jogo.value
+        await view.stream_publico_view.atualizar_embed_publico(interaction)
 
 
-# --- VIEW PÚBLICA DA TRANSMISSÃO ---
+# --- VIEW PÚBLICA (ESPECTADORES) ---
 
 class StreamPublicoView(View):
     def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
@@ -232,8 +232,10 @@ class StreamPublicoView(View):
         self.horas_totais = 3
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
         self.usuarios_com_duvidas_aberto = set()
+        self.msg_publica = None
+        self.msg_dono = None
 
-        # LINHA 0: Botão exclusivo "Assistir live"
+        # LINHA 0: Botão "Assistir live"
         self.add_item(Button(
             label="Assistir live",
             url=url_sala,
@@ -243,25 +245,20 @@ class StreamPublicoView(View):
         ))
 
     async def atualizar_embed_publico(self, interaction: discord.Interaction):
-        timestamp_unix = int(self.tempo_encerramento.timestamp())
-        
         embed = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
                 f"🎮 <@{self.author_id}> acabou de iniciar uma transmissão na **{self.dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `{self.jogo_atual}`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
-                f"🛠️ **Funções do Dono da Sala:**\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
             ),
             color=self.dados_sala["cor"]
         )
+        if self.msg_publica:
+            await self.msg_publica.edit(embed=embed, view=self)
 
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    # --- LINHA 1: BOTÃO DÚVIDAS (ABAIXO DE ASSISTIR LIVE) ---
-
+    # LINHA 1: Botão "Dúvidas" abaixo de Assistir live
     @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=1)
     async def btn_regras(self, interaction: discord.Interaction, button: Button):
         user_id = interaction.user.id
@@ -294,14 +291,31 @@ class StreamPublicoView(View):
         if user_id in self.usuarios_com_duvidas_aberto:
             self.usuarios_com_duvidas_aberto.remove(user_id)
 
-    # --- LINHA 2: FUNÇÕES DO DONO DA SALA ---
 
-    @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=2)
+# --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
+
+class StreamDonoView(View):
+    def __init__(self, stream_publico_view: StreamPublicoView):
+        super().__init__(timeout=None)
+        self.stream_publico_view = stream_publico_view
+
+    async def atualizar_embed_dono(self, interaction: discord.Interaction):
+        timestamp_unix = int(self.stream_publico_view.tempo_encerramento.timestamp())
+        embed_dono = discord.Embed(
+            description=(
+                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+            ),
+            color=discord.Color.dark_theme()
+        )
+        await interaction.response.edit_message(embed=embed_dono, view=self)
+
+    @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=0)
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
-        if interaction.user.id != self.author_id and not is_admin:
+        if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode alterar o jogo!",
+                f"⚠️ Apenas <@{self.stream_publico_view.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode alterar o jogo!",
                 ephemeral=True,
                 delete_after=5
             )
@@ -310,40 +324,44 @@ class StreamPublicoView(View):
         modal.view = self
         await interaction.response.send_modal(modal)
 
-    @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=2)
+    @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=0)
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
-        if interaction.user.id != self.author_id and not is_admin:
+        if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
+                f"⚠️ Apenas <@{self.stream_publico_view.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
                 ephemeral=True,
                 delete_after=5
             )
 
-        if self.horas_totais >= 5:
+        if self.stream_publico_view.horas_totais >= 5:
             return await interaction.response.send_message("⚠️ A transmissão já atingiu o limite máximo permitido de **5 horas**!", ephemeral=True, delete_after=5)
 
-        self.horas_totais += 1
-        self.tempo_encerramento += timedelta(hours=1)
-        await self.atualizar_embed_publico(interaction)
+        self.stream_publico_view.horas_totais += 1
+        self.stream_publico_view.tempo_encerramento += timedelta(hours=1)
+        await self.atualizar_embed_dono(interaction)
         await interaction.followup.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", ephemeral=True, delete_after=3)
 
-    @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=2)
+    @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=0)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
-        if interaction.user.id != self.author_id and not is_admin:
+        if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
             return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
+                f"⚠️ Apenas <@{self.stream_publico_view.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
                 ephemeral=True,
                 delete_after=5
             )
 
-        if self.sala_id in SALAS_EM_USO:
-            del SALAS_EM_USO[self.sala_id]
+        sala_id = self.stream_publico_view.sala_id
+        if sala_id in SALAS_EM_USO:
+            del SALAS_EM_USO[sala_id]
 
         try:
-            await interaction.message.delete()
+            if self.stream_publico_view.msg_publica:
+                await self.stream_publico_view.msg_publica.delete()
+            if self.stream_publico_view.msg_dono:
+                await self.stream_publico_view.msg_dono.delete()
             await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
         except Exception:
             await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
@@ -399,25 +417,23 @@ class SelectSalaKosmi(Select):
 
         SALAS_EM_USO[sala_id] = interaction.user.id
 
-        # 1. View interativa da Mensagem pública no chat
+        # 1. Instancia as views
         view_publica = StreamPublicoView(
             author_id=interaction.user.id,
             sala_id=sala_id,
             url_sala=dados_sala['url'],
             dados_sala=dados_sala
         )
+        view_dono = StreamDonoView(stream_publico_view=view_publica)
 
-        timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
-
+        # 2. Envia a Mensagem Pública (Anúncio da Live + Assistir + Dúvidas)
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
                 f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão na **{dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `Não especificado`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
-                f"🛠️ **Funções do Dono da Sala:**\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
             ),
             color=dados_sala["cor"]
         )
@@ -427,6 +443,24 @@ class SelectSalaKosmi(Select):
             view=view_publica,
             delete_after=18000
         )
+        view_publica.msg_publica = msg_publica
+
+        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala)
+        timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
+        embed_dono = discord.Embed(
+            description=(
+                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+            ),
+            color=discord.Color.dark_theme()
+        )
+
+        msg_dono = await interaction.channel.send(
+            embed=embed_dono,
+            view=view_dono,
+            delete_after=18000
+        )
+        view_publica.msg_dono = msg_dono
 
         # Limpeza automatizada
         async def limpar_sala_expirada():
@@ -435,18 +469,17 @@ class SelectSalaKosmi(Select):
                 del SALAS_EM_USO[sala_id]
             try:
                 await msg_publica.delete()
+                await msg_dono.delete()
             except Exception:
                 pass
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado para quem iniciou a live (Funções do Dono da Sala)
+        # 4. Aviso privado para quem iniciou a live
         embed_privado = discord.Embed(
             title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**\n\n"
-                f"🛠️ **Funções do Dono da Sala:**\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+                f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
             color=dados_sala["cor"]
         )
