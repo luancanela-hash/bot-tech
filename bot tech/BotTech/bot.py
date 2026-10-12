@@ -304,7 +304,8 @@ class StreamDonoView(View):
         embed_dono = discord.Embed(
             description=(
                 f"🛠️ **Funções do Dono da Sala:**\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
+                f"🎮 *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
             color=discord.Color.dark_theme()
         )
@@ -450,7 +451,8 @@ class SelectSalaKosmi(Select):
         embed_dono = discord.Embed(
             description=(
                 f"🛠️ **Funções do Dono da Sala:**\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
+                f"🎮 *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
             color=discord.Color.dark_theme()
         )
