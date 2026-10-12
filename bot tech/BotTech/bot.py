@@ -242,16 +242,16 @@ class StreamPublicoView(View):
 
     async def atualizar_embed_publico(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA ({self.dados_sala['nome']})",
+            title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
-                f"🎮 <@{self.author_id}> acabou de iniciar uma transmissão!\n\n"
+                f"🎮 <@{self.author_id}> acabou de iniciar uma transmissão na **{self.dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `{self.jogo_atual}`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
+                f"⏳ **Encerramento Previsto:** A transmissão será encerrada automaticamente em aproximadamente **{self.horas_totais} horas**. *(Para estender a duração, utilize o botão **Prorrogar (+1h)**)*."
             ),
             color=self.dados_sala["cor"]
         )
-        embed.set_footer(text=f"Esta mensagem apagará automaticamente após aproximadamente {self.horas_totais} horas.")
 
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -401,16 +401,16 @@ class SelectSalaKosmi(Select):
         )
 
         embed_publico = discord.Embed(
-            title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA ({dados_sala['nome']})",
+            title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
-                f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão!\n\n"
+                f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão na **{dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `Não especificado`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
+                f"⏳ **Encerramento Previsto:** A transmissão será encerrada automaticamente em aproximadamente **3 horas**. *(Para estender a duração, utilize o botão **Prorrogar (+1h)**)*."
             ),
             color=dados_sala["cor"]
         )
-        embed_publico.set_footer(text="Esta mensagem apagará automaticamente após aproximadamente 3 horas.")
 
         msg_publica = await interaction.channel.send(
             embed=embed_publico,
