@@ -233,7 +233,7 @@ class StreamPublicoView(View):
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
         self.usuarios_com_duvidas_aberto = set()
 
-        # Row 0: Botão de Link direto para Assistir
+        # LINHA 0 (Geral / Espectadores): Botão de Assistir Live
         self.add_item(Button(
             label="Assistir live",
             url=url_sala,
@@ -252,14 +252,49 @@ class StreamPublicoView(View):
                 f"🕹️ **Transmitindo:** `{self.jogo_atual}`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>. *(Para estender a duração, utilize o botão **Prorrogar (+1h)**)*."
+                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
             ),
             color=self.dados_sala["cor"]
         )
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    # --- BOTÕES DA LINHA 1 ---
+    # --- LINHA 0: DÚVIDAS (PÚBLICO) ---
+
+    @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=0)
+    async def btn_regras(self, interaction: discord.Interaction, button: Button):
+        user_id = interaction.user.id
+
+        if user_id in self.usuarios_com_duvidas_aberto:
+            return await interaction.response.send_message(
+                "⚠️ Já existe uma guia de dúvidas aberta! Verifique a mensagem temporária acima!",
+                ephemeral=True,
+                delete_after=4
+            )
+
+        self.usuarios_com_duvidas_aberto.add(user_id)
+
+        embed_regras = discord.Embed(
+            title="📋 Guia de Acesso ao Kosmi",
+            description=(
+                "**Dicas para aproveitar a transmissão:**\n\n"
+                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
+                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
+                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
+                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
+            ),
+            color=discord.Color.blue()
+        )
+        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 minutos.")
+        
+        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
+
+        await asyncio.sleep(180)
+        if user_id in self.usuarios_com_duvidas_aberto:
+            self.usuarios_com_duvidas_aberto.remove(user_id)
+
+    # --- LINHA 1: CONTROLES RESTRICTOS AO DONO / ADMIN ---
 
     @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=1)
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
@@ -292,38 +327,6 @@ class StreamPublicoView(View):
         self.tempo_encerramento += timedelta(hours=1)
         await self.atualizar_embed_publico(interaction)
         await interaction.followup.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", ephemeral=True, delete_after=3)
-
-    @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=1)
-    async def btn_regras(self, interaction: discord.Interaction, button: Button):
-        user_id = interaction.user.id
-
-        if user_id in self.usuarios_com_duvidas_aberto:
-            return await interaction.response.send_message(
-                "⚠️ Já existe uma guia de dúvidas aberta! Verifique a mensagem temporária acima!",
-                ephemeral=True,
-                delete_after=4
-            )
-
-        self.usuarios_com_duvidas_aberto.add(user_id)
-
-        embed_regras = discord.Embed(
-            title="📋 Guia de Acesso ao Kosmi",
-            description=(
-                "**Dicas para aproveitar a transmissão:**\n\n"
-                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
-                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
-                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
-                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
-            ),
-            color=discord.Color.blue()
-        )
-        embed_regras.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 minutos.")
-        
-        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
-
-        await asyncio.sleep(180)
-        if user_id in self.usuarios_com_duvidas_aberto:
-            self.usuarios_com_duvidas_aberto.remove(user_id)
 
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=1)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
@@ -413,7 +416,8 @@ class SelectSalaKosmi(Select):
                 f"🕹️ **Transmitindo:** `Não especificado`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"Clique no botão **Assistir live** abaixo para entrar no espaço.\n\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>. *(Para estender a duração, utilize o botão **Prorrogar (+1h)**)*."
+                f"🛠️ **Funções do Dono da Sala:**\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração, utilize o botão **Prorrogar (+1h)** abaixo)*."
             ),
             color=dados_sala["cor"]
         )
@@ -421,7 +425,7 @@ class SelectSalaKosmi(Select):
         msg_publica = await interaction.channel.send(
             embed=embed_publico,
             view=view_publica,
-            delete_after=18000  # 5 horas padrão de retenção máxima no canal
+            delete_after=18000  # 5 horas padrão de retenção
         )
 
         # Limpeza automatizada
