@@ -215,7 +215,16 @@ class ModalDefinirJogo(Modal, title="🎮 Definir Jogo / Atividade"):
     async def on_submit(self, interaction: discord.Interaction):
         view: StreamDonoView = self.view
         view.stream_publico_view.jogo_atual = self.nome_jogo.value
-        await view.stream_publico_view.atualizar_embed_publico(interaction)
+        
+        # 1. Atualiza o Embed público com o nome do jogo
+        await view.stream_publico_view.atualizar_embed_publico()
+        
+        # 2. Responde obrigatoriamente à interação do modal para evitar o erro do Discord
+        await interaction.response.send_message(
+            f"✅ Jogo definido como **{self.nome_jogo.value}** com sucesso!",
+            ephemeral=True,
+            delete_after=3
+        )
 
 
 # --- VIEW PÚBLICA (ESPECTADORES) ---
@@ -243,7 +252,7 @@ class StreamPublicoView(View):
             row=0
         ))
 
-    async def atualizar_embed_publico(self, interaction: discord.Interaction):
+    async def atualizar_embed_publico(self):
         embed = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
