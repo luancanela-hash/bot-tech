@@ -273,6 +273,9 @@ class StreamPublicoView(View):
         if interaction.user.id != self.author_id and not is_admin:
             return await interaction.response.send_message("⚠️ Apenas o criador da live (ou Administrador) pode prorrogar a duração!", ephemeral=True, delete_after=5)
 
+        if self.horas_totais >= 6:
+            return await interaction.response.send_message("⚠️ A transmissão já atingiu o limite máximo permitido de **6 horas**!", ephemeral=True, delete_after=5)
+
         self.horas_totais += 1
         await self.atualizar_embed_publico(interaction)
         await interaction.followup.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", ephemeral=True, delete_after=3)
