@@ -277,7 +277,6 @@ class StreamPrivadoView(View):
             del SALAS_EM_USO[self.sala_id]
 
         try:
-            # Apaga a mensagem privada e tenta apagar também a mensagem pública correspondente se possível
             await interaction.message.delete()
             await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
         except Exception:
@@ -352,9 +351,9 @@ class SelectSalaKosmi(Select):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com os botões "Abrir sua live" e "Encerrar Transmissão" (Expira em 3 horas / 10800s)
+        # 2. Aviso privado com NOME DO USUÁRIO no título, "Abrir sua live" e "Encerrar Transmissão" (Expira em 3 horas)
         embed_privado = discord.Embed(
-            title="🚀 S U A  S A L A  E S T Á  P R O N T A !",
+            title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
                 f"Clique no botão abaixo para acessar o seu espaço:\n\n"
                 f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
