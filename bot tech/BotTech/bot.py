@@ -269,11 +269,11 @@ class StreamPublicoView(View):
             await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
 
 
-# --- VIEW PRIVADA (Apenas botão "Abrir sua live" - Timeout 3 Horas) ---
+# --- VIEW PRIVADA (Apenas botão "Abrir sua live" - Timeout 2 Minutos) ---
 
 class StreamPrivadoView(View):
     def __init__(self, url_sala: str):
-        super().__init__(timeout=10800)  # 3 horas
+        super().__init__(timeout=120)  # 2 minutos
         self.add_item(Button(
             label="Abrir sua live",
             url=url_sala,
@@ -350,7 +350,7 @@ class SelectSalaKosmi(Select):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com NOME DO USUÁRIO no título e o botão "Abrir sua live" (Expira em 3 horas)
+        # 2. Aviso privado com NOME DO USUÁRIO no título e o botão "Abrir sua live" (Expira em 2 minutos)
         embed_privado = discord.Embed(
             title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
@@ -359,13 +359,13 @@ class SelectSalaKosmi(Select):
             ),
             color=dados_sala["cor"]
         )
-        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 3 horas.")
+        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 2 minutos.")
 
         await interaction.response.send_message(
             embed=embed_privado,
             view=StreamPrivadoView(url_sala=dados_sala['url']),
             ephemeral=True,
-            delete_after=10800  # 3 horas
+            delete_after=120  # 2 minutos
         )
 
         async def resetar_painel_stream():
