@@ -93,7 +93,7 @@ SALAS_KOSMI = {
     }
 }
 
-# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS ---
+# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS (Armazena o ID do usuário) ---
 SALAS_EM_USO = {}
 
 # --- SISTEMA DE JOGOS CO-OP ---
@@ -253,9 +253,8 @@ class StreamPublicoView(View):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
         if interaction.user.id != self.author_id and not is_admin:
-            # Nome do usuário destacado na mensagem de aviso de permissão
             return await interaction.response.send_message(
-                f"⚠️ Apenas {interaction.user.mention} (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
+                f"⚠️ Apenas <@{self.author_id}> (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
                 ephemeral=True,
                 delete_after=5
             )
@@ -311,14 +310,14 @@ class SelectSalaKosmi(Select):
             return await interaction.response.send_message("❌ Sala não encontrada.", ephemeral=True)
 
         if sala_id in SALAS_EM_USO:
-            dono_atual = SALAS_EM_USO[sala_id]
+            dono_atual_id = SALAS_EM_USO[sala_id]
             return await interaction.response.send_message(
-                f"⚠️ Esta sala já está sendo usada pelo **{dono_atual}**! Escolha outra sala disponível.",
+                f"⚠️ Esta sala já está sendo usada pelo(a) <@{dono_atual_id}>! Escolha outra sala disponível.",
                 ephemeral=True,
                 delete_after=10
             )
 
-        SALAS_EM_USO[sala_id] = interaction.user.display_name
+        SALAS_EM_USO[sala_id] = interaction.user.id
 
         # 1. Mensagem pública no chat (Com Assistir live e Encerrar Transmissão - Expira em 3 horas)
         embed_publico = discord.Embed(
@@ -342,7 +341,7 @@ class SelectSalaKosmi(Select):
         # Tarefa em segundo plano para limpar a sala do dicionário após 3 horas
         async def limpar_sala_expirada():
             await asyncio.sleep(10800)
-            if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == interaction.user.display_name:
+            if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == interaction.user.id:
                 del SALAS_EM_USO[sala_id]
             try:
                 await msg_publica.delete()
