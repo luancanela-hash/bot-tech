@@ -254,24 +254,7 @@ class StreamPublicoView(View):
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    # --- BOTÃO DA LINHA 0 (REGRAS / AJUDA PARA ESPECTADORES) ---
-
-    @button(label="Como Entrar no Kosmi", style=discord.ButtonStyle.secondary, emoji="📋", custom_id="btn_regras_kosmi", row=0)
-    async def btn_regras(self, interaction: discord.Interaction, button: Button):
-        embed_regras = discord.Embed(
-            title="📋 Guia de Acesso ao Kosmi",
-            description=(
-                "**Dicas para aproveitar a transmissão:**\n\n"
-                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
-                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
-                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
-                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
-            ),
-            color=discord.Color.blue()
-        )
-        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
-
-    # --- BOTÕES DA LINHA 1 (EXCLUSIVOS DO STREAMER/ADMIN) ---
+    # --- BOTÕES DA LINHA 1 (SEQUÊNCIA SOLICITADA) ---
 
     @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=1)
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
@@ -292,6 +275,21 @@ class StreamPublicoView(View):
         self.horas_totais += 1
         await self.atualizar_embed_publico(interaction)
         await interaction.followup.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", ephemeral=True, delete_after=3)
+
+    @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=1)
+    async def btn_regras(self, interaction: discord.Interaction, button: Button):
+        embed_regras = discord.Embed(
+            title="📋 Guia de Acesso ao Kosmi",
+            description=(
+                "**Dicas para aproveitar a transmissão:**\n\n"
+                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
+                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
+                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
+                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
+            ),
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
 
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=1)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
