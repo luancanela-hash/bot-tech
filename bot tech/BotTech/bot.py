@@ -337,7 +337,7 @@ class StreamPublicoView(View):
         ))
 
 
-# --- VIEW CONTROLE (DONO DA SALA / ADMIN) - APENAS PRORROGAR E ENCERRAR ---
+# --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
 
 class StreamDonoView(View):
     def __init__(self, stream_publico_view: StreamPublicoView):
@@ -358,29 +358,35 @@ class StreamDonoView(View):
     @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=0)
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+        
         if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
-            return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.stream_publico_view.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode prorrogar a duração!",
-                ephemeral=True,
+            await interaction.response.defer()
+            return await interaction.channel.send(
+                f"⚠️ {interaction.user.mention}, apenas <@{self.stream_publico_view.author_id}> (dono da sala) ou Administradores podem prorrogar a duração!",
                 delete_after=5
             )
 
         if self.stream_publico_view.horas_totais >= 5:
-            return await interaction.response.send_message("⚠️ A transmissão já atingiu o limite máximo permitido de **5 horas**!", ephemeral=True, delete_after=5)
+            await interaction.response.defer()
+            return await interaction.channel.send(
+                f"⚠️ {interaction.user.mention}, a transmissão já atingiu o limite máximo permitido de **5 horas**!",
+                delete_after=5
+            )
 
         self.stream_publico_view.horas_totais += 1
         self.stream_publico_view.tempo_encerramento += timedelta(hours=1)
         await self.atualizar_embed_dono(interaction)
-        await interaction.followup.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", ephemeral=True, delete_after=3)
+        
+        await interaction.channel.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", delete_after=3)
 
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=0)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
         if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
-            return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.stream_publico_view.author_id}> dono da sala (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
-                ephemeral=True,
+            await interaction.response.defer()
+            return await interaction.channel.send(
+                f"⚠️ {interaction.user.mention}, apenas <@{self.stream_publico_view.author_id}> (dono da sala) ou Administradores podem encerrar esta transmissão!",
                 delete_after=5
             )
 
@@ -393,9 +399,11 @@ class StreamDonoView(View):
                 await self.stream_publico_view.msg_publica.delete()
             if self.stream_publico_view.msg_dono:
                 await self.stream_publico_view.msg_dono.delete()
-            await interaction.response.send_message("🛑 Transmissão encerrada com sucesso!", ephemeral=True, delete_after=3)
+            
+            await interaction.response.defer()
+            await interaction.channel.send("🛑 Transmissão encerrada com sucesso!", delete_after=3)
         except Exception:
-            await interaction.response.send_message("❌ Não foi possível apagar a mensagem.", ephemeral=True, delete_after=3)
+            await interaction.channel.send("❌ Não foi possível apagar a mensagem.", delete_after=3)
 
 
 # --- VIEW PRIVADA DA SALA PRONTA ---
@@ -440,10 +448,10 @@ class SelectSalaKosmi(Select):
 
         if sala_id in SALAS_EM_USO:
             dono_atual_id = SALAS_EM_USO[sala_id]
-            return await interaction.response.send_message(
-                f"⚠️ Esta sala já está sendo usada pelo(a) <@{dono_atual_id}>! Escolha outra sala disponível.",
-                ephemeral=True,
-                delete_after=10
+            await interaction.response.defer()
+            return await interaction.channel.send(
+                f"⚠️ {interaction.user.mention}, esta sala já está sendo usada pelo(a) <@{dono_atual_id}>! Escolha outra sala disponível.",
+                delete_after=5
             )
 
         # Abre diretamente o Modal para pedir o nome do jogo
