@@ -217,7 +217,7 @@ class ModalDefinirJogo(Modal, title="🎮 Definir Jogo / Atividade"):
         await view.atualizar_embed_publico(interaction)
 
 
-# --- VIEW PÚBLICA (Assistir, Pipocas, Jogo, Prorrogar, Encerrar) ---
+# --- VIEW PÚBLICA DA TRANSMISSÃO ---
 
 class StreamPublicoView(View):
     def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
@@ -228,10 +228,9 @@ class StreamPublicoView(View):
         self.dados_sala = dados_sala
         
         self.jogo_atual = "Não especificado"
-        self.espectadores = set()
         self.horas_totais = 3
 
-        # Row 0: Botão de Link para Assistir
+        # Row 0: Botão de Link direto para Assistir
         self.add_item(Button(
             label="Assistir live",
             url=url_sala,
@@ -241,62 +240,54 @@ class StreamPublicoView(View):
         ))
 
     async def atualizar_embed_publico(self, interaction: discord.Interaction):
-        # Monta a lista visual dos espectadores marcados
-        if self.espectadores:
-            lista_presentes = ", ".join([f"<@{uid}>" for uid in self.espectadores])
-            texto_presenca = f"🍿 **Espectadores Marcados ({len(self.espectadores)}):**\n{lista_presentes}"
-        else:
-            texto_presenca = "🍿 **Espectadores Marcados:** Nenhum no momento. Seja o primeiro!"
-
         embed = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA ({self.dados_sala['nome']})",
             description=(
                 f"🎮 <@{self.author_id}> acabou de iniciar uma transmissão!\n\n"
                 f"🕹️ **Transmitindo:** `{self.jogo_atual}`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"{texto_presenca}\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
             ),
             color=self.dados_sala["cor"]
         )
         embed.set_footer(text=f"Esta mensagem apagará automaticamente após aproximadamente {self.horas_totais} horas.")
 
-        # Atualiza a label do botão de pipoca com o contador
-        self.btn_marcar_presente.label = f"Marcar Presença ({len(self.espectadores)})"
-
         await interaction.response.edit_message(embed=embed, view=self)
 
-    # --- BOTÕES DA LINHA 0 ---
+    # --- BOTÃO DA LINHA 0 (REGRAS / AJUDA PARA ESPECTADORES) ---
 
-    @button(label="Marcar Presença (0)", style=discord.ButtonStyle.success, emoji="🍿", custom_id="btn_pipoca_stream", row=0)
-    async def btn_marcar_presente(self, interaction: discord.Interaction, button: Button):
-        user_id = interaction.user.id
-        if user_id in self.espectadores:
-            self.espectadores.remove(user_id)
-            msg_status = "🍿 Você desmarcou sua presença na live."
-        else:
-            self.espectadores.add(user_id)
-            msg_status = "🍿 Presença confirmada na live!"
+    @button(label="Como Entrar no Kosmi", style=discord.ButtonStyle.secondary, emoji="📋", custom_id="btn_regras_kosmi", row=0)
+    async def btn_regras(self, interaction: discord.Interaction, button: Button):
+        embed_regras = discord.Embed(
+            title="📋 Guia de Acesso ao Kosmi",
+            description=(
+                "**Dicas para aproveitar a transmissão:**\n\n"
+                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
+                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
+                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
+                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
+            ),
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed_regras, ephemeral=True)
 
-        await self.atualizar_embed_publico(interaction)
-        await interaction.followup.send(msg_status, ephemeral=True, delete_after=3)
+    # --- BOTÕES DA LINHA 1 (EXCLUSIVOS DO STREAMER/ADMIN) ---
 
-    # --- BOTÕES DA LINHA 1 ---
-
-    @button(label="Definir Jogo", style=discord.ButtonStyle.secondary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=1)
+    @button(label="Definir Jogo", style=discord.ButtonStyle.primary, emoji="🎮", custom_id="btn_definir_jogo_stream", row=1)
     async def btn_definir_jogo(self, interaction: discord.Interaction, button: Button):
-        if interaction.user.id != self.author_id:
-            return await interaction.response.send_message("⚠️ Apenas o criador da live pode alterar o jogo/atividade!", ephemeral=True, delete_after=5)
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+        if interaction.user.id != self.author_id and not is_admin:
+            return await interaction.response.send_message("⚠️ Apenas o criador da live (ou Administrador) pode alterar o jogo!", ephemeral=True, delete_after=5)
         
         modal = ModalDefinirJogo()
         modal.view = self
         await interaction.response.send_modal(modal)
 
-    @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.primary, emoji="⏱️", custom_id="btn_prorrogar_stream", row=1)
+    @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=1)
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
-        if interaction.user.id != self.author_id:
-            return await interaction.response.send_message("⚠️ Apenas o criador da live pode prorrogar a duração!", ephemeral=True, delete_after=5)
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+        if interaction.user.id != self.author_id and not is_admin:
+            return await interaction.response.send_message("⚠️ Apenas o criador da live (ou Administrador) pode prorrogar a duração!", ephemeral=True, delete_after=5)
 
         self.horas_totais += 1
         await self.atualizar_embed_publico(interaction)
@@ -387,9 +378,7 @@ class SelectSalaKosmi(Select):
                 f"🎮 {interaction.user.mention} acabou de iniciar uma transmissão!\n\n"
                 f"🕹️ **Transmitindo:** `Não especificado`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🍿 **Espectadores Marcados:** Nenhum no momento. Seja o primeiro!\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar."
+                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
             ),
             color=dados_sala["cor"]
         )
