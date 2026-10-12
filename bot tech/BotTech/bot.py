@@ -253,8 +253,9 @@ class StreamPublicoView(View):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
         if interaction.user.id != self.author_id and not is_admin:
+            # Nome do usuário destacado na mensagem de aviso de permissão
             return await interaction.response.send_message(
-                "⚠️ Apenas o utilizador que iniciou esta transmissão (ou um Administrador) pode encerrá-la!",
+                f"⚠️ Apenas {interaction.user.mention} (ou um Administrador) que iniciou esta transmissão pode encerrá-la!",
                 ephemeral=True,
                 delete_after=5
             )
@@ -350,9 +351,9 @@ class SelectSalaKosmi(Select):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 2. Aviso privado com NOME DO USUÁRIO no título e o botão "Abrir sua live" (Expira em 2 minutos)
+        # 2. Aviso privado com NOME DO USUÁRIO destacado no título e o botão "Abrir sua live" (Expira em 2 minutos)
         embed_privado = discord.Embed(
-            title=f"🚀 {interaction.user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
+            title=f"🚀 {interaction.user.mention}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
                 f"Clique no botão abaixo para acessar o seu espaço:\n\n"
                 f"{dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
