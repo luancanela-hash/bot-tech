@@ -231,11 +231,10 @@ class StreamPublicoView(View):
         self.jogo_atual = "Não especificado"
         self.horas_totais = 3
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
-        self.usuarios_com_duvidas_aberto = set()
         self.msg_publica = None
         self.msg_dono = None
 
-        # LINHA 0: Botão "Assistir live"
+        # Botão exclusivo "Assistir live"
         self.add_item(Button(
             label="Assistir live",
             url=url_sala,
@@ -257,45 +256,6 @@ class StreamPublicoView(View):
         )
         if self.msg_publica:
             await self.msg_publica.edit(embed=embed, view=self)
-
-    # LINHA 1: Botão "Dúvidas" abaixo de Assistir live
-    @button(label="Dúvidas", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="btn_regras_kosmi", row=1)
-    async def btn_regras(self, interaction: discord.Interaction, button: Button):
-        user_id = interaction.user.id
-
-        if user_id in self.usuarios_com_duvidas_aberto:
-            return await interaction.response.send_message(
-                "⚠️ Já existe uma guia de dúvidas aberta! Verifique a mensagem temporária acima!",
-                ephemeral=True,
-                delete_after=4
-            )
-
-        self.usuarios_com_duvidas_aberto.add(user_id)
-
-        embed_regras = discord.Embed(
-            title="📋 Guia de Acesso ao Kosmi",
-            description=(
-                "**Dicas para aproveitar a transmissão:**\n\n"
-                "1️⃣ **Assistir:** Clique em `Assistir live` para abrir a sala no navegador.\n"
-                "2️⃣ **Áudio / Mic:** Permita o uso de microfone no navegador se desejar conversar.\n"
-                "3️⃣ **Compartilhar Tela:** Use o botão de tela dentro do Kosmi para transmitir o seu jogo também.\n"
-                "4️⃣ **Qualidade:** Se a tela ficar travando, altere a qualidade no ícone de engrenagem no canto da sala."
-            ),
-            color=discord.Color.blue()
-        )
-        embed_regras.set_footer(text="Esta mensagem desaparecerá automaticamente após 3 minutos.")
-        
-        await interaction.channel.send(
-            content=f"{interaction.user.mention}, aqui estão as dúvidas frequentes:",
-            embed=embed_regras,
-            delete_after=180
-        )
-        
-        await interaction.response.send_message("📋 Guia de dúvidas enviado abaixo!", ephemeral=True, delete_after=3)
-
-        await asyncio.sleep(180)
-        if user_id in self.usuarios_com_duvidas_aberto:
-            self.usuarios_com_duvidas_aberto.remove(user_id)
 
 
 # --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
@@ -433,7 +393,7 @@ class SelectSalaKosmi(Select):
         )
         view_dono = StreamDonoView(stream_publico_view=view_publica)
 
-        # 2. Envia a Mensagem Pública (Anúncio da Live + Assistir + Dúvidas)
+        # 2. Envia a Mensagem Pública (Anúncio da Live + Assistir)
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
@@ -452,7 +412,7 @@ class SelectSalaKosmi(Select):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala com o nome/menção em destaque)
+        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
