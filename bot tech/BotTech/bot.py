@@ -305,9 +305,9 @@ class StreamDonoView(View):
             description=(
                 f"🛠️ **Funções do Dono da Sala:**\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
-                f"🎮 *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
+                f"🎮 **Seu jogo:** *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
-            color=discord.Color.dark_theme()
+            color=self.stream_publico_view.dados_sala["cor"]
         )
         await interaction.response.edit_message(embed=embed_dono, view=self)
 
@@ -446,15 +446,15 @@ class SelectSalaKosmi(Select):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala)
+        # 3. Envia a Segunda Mensagem (Embed dedicado às Funções do Dono da Sala com a mesma cor da sala)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
                 f"🛠️ **Funções do Dono da Sala:**\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R> *(para estender a duração da live, utilize o botão **Prorrogar (+1h)** abaixo)*.\n"
-                f"🎮 *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
+                f"🎮 **Seu jogo:** *(caso queira definir o nome do jogo em exibição, utilize o botão **Definir Jogo** abaixo)*."
             ),
-            color=discord.Color.dark_theme()
+            color=dados_sala["cor"]
         )
 
         msg_dono = await interaction.channel.send(
