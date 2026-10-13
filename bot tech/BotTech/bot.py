@@ -240,8 +240,6 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         SALAS_EM_USO[self.sala_id] = user.id
 
-        await interaction.response.defer(ephemeral=True)
-
         view_publica = StreamPublicoView(
             author_id=user.id,
             sala_id=self.sala_id,
@@ -252,7 +250,6 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_dono = StreamDonoView(
             author_id=user.id,
             sala_id=self.sala_id,
-            url_sala=self.dados_sala['url'],
             dados_sala=self.dados_sala
         )
         view_dono.stream_publico_view = view_publica
@@ -292,6 +289,21 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_publica.msg_dono = msg_dono
         view_dono.msg_dono = msg_dono
+
+        # Resposta efêmera enviando o botão "Abrir sua live" exclusivamente para o dono
+        embed_privado = discord.Embed(
+            title=f"🚀 {user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
+            description=(
+                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+            ),
+            color=self.dados_sala["cor"]
+        )
+
+        await interaction.response.send_message(
+            embed=embed_privado,
+            view=StreamPrivadoView(url_sala=self.dados_sala['url']),
+            ephemeral=True
+        )
 
         async def limpar_sala_expirada():
             await asyncio.sleep(18000)
@@ -339,10 +351,24 @@ class StreamPublicoView(View):
         ))
 
 
+# --- VIEW PRIVADA APENAS PARA O DONO ABRIR A LIVE ---
+
+class StreamPrivadoView(View):
+    def __init__(self, url_sala: str):
+        super().__init__(timeout=None)
+        self.add_item(Button(
+            label="Abrir sua live",
+            url=url_sala,
+            style=discord.ButtonStyle.link,
+            emoji="🚀",
+            row=0
+        ))
+
+
 # --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
 
 class StreamDonoView(View):
-    def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
+    def __init__(self, author_id: int, sala_id: str, dados_sala: dict):
         super().__init__(timeout=None)
         self.author_id = author_id
         self.sala_id = sala_id
@@ -352,15 +378,6 @@ class StreamDonoView(View):
         self.msg_publica = None
         self.msg_dono = None
         self.stream_publico_view = None
-
-        # Adiciona o botão de link diretamente na linha 1 de forma segura
-        self.add_item(Button(
-            label="Abrir sua live",
-            url=url_sala,
-            style=discord.ButtonStyle.link,
-            emoji="🚀",
-            row=1
-        ))
 
     async def atualizar_embed_dono(self, interaction: discord.Interaction):
         timestamp_unix = int(self.tempo_encerramento.timestamp())
