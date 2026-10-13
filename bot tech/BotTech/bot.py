@@ -498,6 +498,12 @@ async def painel_stream(ctx):
 # --- COMANDO PÚBLICO PARA TODOS OS MEMBROS: SORTEADOR DE TIMES ---
 @bot.command(name="times", aliases=["sortear", "dividir"])
 async def sortear_times(ctx, num_times: int = 2):
+    # Apaga a mensagem digitada pelo usuário (!times) imediatamente[cite: 2, 4, 5]
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
     if "sortear" not in ctx.channel.name.lower():
         canal_destino = next((c for c in ctx.guild.text_channels if "sortear" in c.name.lower()), None)
         mencao_canal = f"<#{canal_destino.id}>" if canal_destino else "no canal de sorteio de times"
@@ -506,10 +512,6 @@ async def sortear_times(ctx, num_times: int = 2):
             f"❌ {ctx.author.mention}, este comando só pode ser utilizado no canal {mencao_canal}!",
             delete_after=5
         )
-        try:
-            await ctx.message.delete()
-        except Exception:
-            pass
         return
 
     if not ctx.author.voice or not ctx.author.voice.channel:
@@ -560,7 +562,7 @@ async def sortear_times(ctx, num_times: int = 2):
 
     embed.set_footer(text="Bom jogo e boa sorte aos times! (Esta mensagem será apagada em 3 minutos)")
     
-    # Envia a mensagem e configura para apagar automaticamente após 180 segundos (3 minutos)
+    # Envia a mensagem com a divisão de times e configura para apagar automaticamente após 3 minutos[cite: 5]
     await ctx.send(embed=embed, delete_after=180)
 
 @bot.command()
