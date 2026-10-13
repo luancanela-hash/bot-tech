@@ -497,7 +497,7 @@ async def painel_stream(ctx):
 
 # --- COMANDO PÚBLICO PARA TODOS OS MEMBROS: SORTEADOR DE TIMES ---
 @bot.command(name="times", aliases=["sortear", "dividir"])
-async def sortear_times(ctx):
+async def sortear_times(ctx, num_times: int = 2):
     if not ctx.author.voice or not ctx.author.voice.channel:
         await ctx.send("❌ Você precisa estar conectado a um canal de voz para sortear os times!", delete_after=5)
         return
@@ -505,40 +505,43 @@ async def sortear_times(ctx):
     canal_voz = ctx.author.voice.channel
     jogadores = [membro.display_name for membro in canal_voz.members if not membro.bot]
 
-    if len(jogadores) < 2:
-        await ctx.send(f"❌ É necessário ter pelo menos 2 pessoas no canal de voz **{canal_voz.name}** para montar times.", delete_after=5)
+    if len(jogadores) < num_times:
+        await ctx.send(
+            f"❌ É necessário ter pelo menos {num_times} pessoas no canal de voz **{canal_voz.name}** para criar {num_times} times.",
+            delete_after=5
+        )
+        return
+
+    if num_times < 2:
+        await ctx.send("❌ O número de times deve ser no mínimo 2!", delete_after=5)
         return
 
     random.shuffle(jogadores)
 
-    metade = len(jogadores) // 2
-    time_alpha = jogadores[:metade]
-    time_bravo = jogadores[metade : metade * 2]
-    reservas = jogadores[metade * 2 :]
+    nomes_times = [
+        ("🔴 Time Alpha", discord.Color.red()),
+        ("🔵 Time Bravo", discord.Color.blue()),
+        ("🟢 Time Charlie", discord.Color.green()),
+        ("🟡 Time Delta", discord.Color.gold()),
+        ("🟣 Time Echo", discord.Color.purple())
+    ]
+
+    times = [[] for _ in range(num_times)]
+    for i, jogador in enumerate(jogadores):
+        times[i % num_times].append(jogador)
 
     embed = discord.Embed(
         title="🎲 Divisão de Times",
-        description=f"Sorteio realizado entre os membros do canal **{canal_voz.name}** ({len(jogadores)} jogadores)!",
+        description=f"Sorteio de **{num_times} times** realizado entre os membros do canal **{canal_voz.name}** ({len(jogadores)} jogadores)!",
         color=discord.Color.gold()
     )
 
-    embed.add_field(
-        name=f"🔴 Time Alpha ({len(time_alpha)})",
-        value="\n".join([f"• {p}" for p in time_alpha]),
-        inline=True
-    )
-    
-    embed.add_field(
-        name=f"🔵 Time Bravo ({len(time_bravo)})",
-        value="\n".join([f"• {p}" for p in time_bravo]),
-        inline=True
-    )
-
-    if reservas:
+    for idx, integrantes in enumerate(times):
+        nome_time = nomes_times[idx][0] if idx < len(nomes_times) else f"⚪ Time {idx+1}"
         embed.add_field(
-            name="⏳ Reservas / Próxima",
-            value="\n".join([f"• {p}" for p in reservas]),
-            inline=False
+            name=f"{nome_time} ({len(integrantes)})",
+            value="\n".join([f"• {p}" for p in integrantes]),
+            inline=True
         )
 
     embed.set_footer(text="Bom jogo e boa sorte aos times!")
@@ -568,8 +571,8 @@ async def comandos(ctx):
         inline=False
     )
     embed.add_field(
-        name="`!times` (ou `!sortear` / `!dividir`)",
-        value="Lê os membros do seu canal de voz atual e divide aleatoriamente em Time Alpha e Time Bravo (Livre para todos os membros).",
+        name="`!times [quantidade]` (ou `!sortear` / `!dividir`)",
+        value="Lê os membros do seu canal de voz atual e divide em 2 ou mais times (ex: `!times 3` para 3 times). Libre para todos os membros.",
         inline=False
     )
     embed.add_field(
