@@ -25,12 +25,13 @@ TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.voice_states = True  # Ativado para detectar entradas/saídas do canal de voz
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 PASTA_TORRENTS = "./torrents"
 
-# --- MAPA DE 5 SALAS KOSMI REVISADO ---
+# --- MAPA DE 5 SALAS KOSMI (MANTIDO INTACTO) ---
 SALAS_KOSMI = {
     "1": {
         "nome": "Tech Ninjas Live [1]",
@@ -64,11 +65,20 @@ SALAS_KOSMI = {
     }
 }
 
-# --- DICIONÁRIOS DE CONTROLE (SALAS E JOGOS EM USO) ---
+# IDs das Atividades Oficiais do Discord (Embedded Apps)
+DISCORD_ACTIVITIES = {
+    "youtube": {"nome": "YouTube Together", "id": 880218394199220274, "emoji": "📺"},
+    "poker": {"nome": "Poker Night", "id": 755827207812677713, "emoji": "🃏"},
+    "chess": {"nome": "Chess In The Park", "id": 832012774040141894, "emoji": "♟️"},
+    "betrayal": {"nome": "Betrayal.io", "id": 773960208805658684, "emoji": "🔪"}
+}
+
+# --- DICIONÁRIOS DE CONTROLE ---
 SALAS_EM_USO = {}
 JOGOS_EM_DOWNLOAD = set()
+ATIVIDADES_ATIVAS = {}  # Para monitoramento das Atividades em canais de voz
 
-# --- SISTEMA DE JOGOS CO-OP ---
+# --- SISTEMA DE JOGOS CO-OP (MANTIDO INTACTO) ---
 
 class DropdownJogos(Select):
     def __init__(self, lista_arquivos, pagina_atual):
@@ -216,7 +226,7 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
-# --- VIEW PÚBLICA (ESPECTADORES) ---
+# --- SISTEMA KOSMI (MANTIDO INTACTO) ---
 
 class StreamPublicoView(View):
     def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
@@ -238,9 +248,6 @@ class StreamPublicoView(View):
             emoji="🍿",
             row=0
         ))
-
-
-# --- VIEW CONTROLE (DONO DA SALA / ADMIN) COM BOTÃO PROTEGIDO ---
 
 class StreamDonoView(View):
     def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
@@ -277,7 +284,6 @@ class StreamDonoView(View):
             )
             return
 
-        # Envia a mensagem privada efêmera com o botão direto ajustado
         view_link = View()
         view_link.add_item(Button(
             label=f"Acessar {self.dados_sala['nome']}",
@@ -343,9 +349,6 @@ class StreamDonoView(View):
         except Exception:
             await interaction.channel.send("❌ Não foi possível apagar a mensagem.", delete_after=3)
 
-
-# --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
-
 class SelectSalaKosmi(Select):
     def __init__(self):
         options = [
@@ -382,7 +385,6 @@ class SelectSalaKosmi(Select):
         user = interaction.user
         SALAS_EM_USO[sala_id] = user.id
 
-        # Restaura imediatamente o painel principal para o texto padrão "Selecione a sala..."
         try:
             await interaction.message.edit(view=StreamPainelView())
         except Exception:
@@ -402,7 +404,6 @@ class SelectSalaKosmi(Select):
         )
         view_dono.stream_publico_view = view_publica
 
-        # 1. Envia a mensagem pública para os espectadores
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA",
             description=(
@@ -421,7 +422,6 @@ class SelectSalaKosmi(Select):
         view_publica.msg_publica = msg_publica
         view_dono.msg_publica = msg_publica
 
-        # 2. Envia o Painel do Dono contendo o botão "Abrir Sua Live" blindado
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -439,7 +439,6 @@ class SelectSalaKosmi(Select):
         view_publica.msg_dono = msg_dono
         view_dono.msg_dono = msg_dono
 
-        # Resposta silenciosa de confirmação (defer) para evitar notificações vazias
         await interaction.response.defer()
 
         async def limpar_sala_expirada():
@@ -460,12 +459,104 @@ class StreamPainelView(View):
         self.add_item(SelectSalaKosmi())
 
 
+# --- NOVO MÓDULO: DISCORD ACTIVITIES (TESTE EXTRA) ---
+
+class SelectAtividadeDiscord(Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=data["nome"],
+                description=f"Iniciar {data['nome']} no seu canal de voz",
+                emoji=data["emoji"],
+                value=key
+            ) for key, data in DISCORD_ACTIVITIES.items()
+        ]
+        super().__init__(
+            placeholder="Selecione uma Atividade para rodar na chamada...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="select_atividade_discord"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            return await interaction.response.send_message(
+                "⚠️ Você precisa estar conectado a um **canal de voz** para iniciar uma Atividade!",
+                ephemeral=True
+            )
+
+        canal_voz = interaction.user.voice.channel
+        chave_atividade = self.values[0]
+        dados_act = DISCORD_ACTIVITIES[chave_atividade]
+
+        try:
+            # Gera o convite nativo de Atividade usando a API do Discord
+            invite = await canal_voz.create_invite(
+                target_type=discord.InviteTarget.embedded_application,
+                target_application_id=dados_act["id"],
+                max_age=3600,
+                max_uses=0
+            )
+
+            embed = discord.Embed(
+                title=f"{dados_act['emoji']} {dados_act['nome']} Iniciado!",
+                description=(
+                    f"🚀 {interaction.user.mention} abriu a atividade **{dados_act['nome']}** no canal **{canal_voz.mention}**!\n\n"
+                    f"Clique no botão abaixo para entrar e assistir/jogar junto na chamada."
+                ),
+                color=discord.Color.blurple()
+            )
+
+            view_link = View()
+            view_link.add_item(Button(
+                label=f"Entrar em {dados_act['nome']}",
+                url=invite.url,
+                style=discord.ButtonStyle.link,
+                emoji="🎮"
+            ))
+
+            msg_atv = await interaction.channel.send(embed=embed, view=view_link)
+            ATIVIDADES_ATIVAS[canal_voz.id] = msg_atv
+
+            await interaction.response.defer()
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ Não foi possível iniciar a atividade no canal de voz. Verifique as permissões de convite do bot.",
+                ephemeral=True
+            )
+
+class AtividadesPainelView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(SelectAtividadeDiscord())
+
+
+# --- EVENTO DE MONITORAMENTO DE ENCERRAMENTO AUTOMÁTICO DAS ATIVIDADES ---
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # Se alguém saiu de um canal onde havia uma Atividade ativa
+    if before.channel and before.channel.id in ATIVIDADES_ATIVAS:
+        canal = before.channel
+        # Se não restar mais ninguém no canal de voz, apaga a mensagem automaticamente
+        if len(canal.members) == 0:
+            msg = ATIVIDADES_ATIVAS.pop(canal.id, None)
+            if msg:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+
+
 # --- EVENTOS E COMANDOS DO BOT ---
 
 @bot.event
 async def on_ready():
     bot.add_view(DropdownView())
     bot.add_view(StreamPainelView())
+    bot.add_view(AtividadesPainelView())
     print(f'Bot online como {bot.user.name}')
 
 @bot.command()
@@ -492,11 +583,27 @@ async def painel_stream(ctx):
         pass
         
     embed = discord.Embed(
-        title="🖥️ Painel de Transmissões - Tech Ninjas",
+        title="🖥️ Painel de Transmissões - Tech Ninjas (Kosmi)",
         description="Para transmitir sua tela para seus amigos selecione uma sala abaixo:",
         color=discord.Color.orange()
     )
     await ctx.send(embed=embed, view=StreamPainelView())
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def painel_atividades(ctx):
+    """NOVO COMANDO: Para testar as Atividades integradas do Discord"""
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+        
+    embed = discord.Embed(
+        title="🚀 Painel de Atividades no Canal de Voz",
+        description="Entre em um canal de voz e selecione uma Atividade abaixo para abrir direto na chamada:",
+        color=discord.Color.blurple()
+    )
+    await ctx.send(embed=embed, view=AtividadesPainelView())
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -508,25 +615,25 @@ async def comandos(ctx):
 
     embed = discord.Embed(
         title="🛠️ Painel de Ajuda - Comandos do Administrador",
-        description="Aqui tem a lista de todos os comandos administrativos disponíveis no bot:",
+        description="Lista de comandos disponíveis:",
         color=discord.Color.gold()
     )
     embed.add_field(
         name="`!enviar_menu`",
-        value="Envia o painel interativo de seleção de Jogos Co-op com suporte a paginação e pesquisa de arquivos `.torrent`.",
+        value="Painel de seleção de Jogos Co-op com suporte a `.torrent`.",
         inline=False
     )
     embed.add_field(
         name="`!painel_stream`",
-        value="Envia o painel limpo com a descrição e o menu suspenso para iniciar avisos de transmissão.",
+        value="Painel fixo do Kosmi (5 salas independentes).",
         inline=False
     )
     embed.add_field(
-        name="`!comandos`",
-        value="Mostra esta lista de ajuda administrativa.",
+        name="`!painel_atividades`",
+        value="[NOVO] Painel para iniciar Atividades (YouTube Together, etc.) direto no canal de voz.",
         inline=False
     )
-    embed.set_footer(text="Esta mensagem desaparecerá automaticamente após 30 segundos.")
+    embed.set_footer(text="Esta mensagem desaparecerá em 30 segundos.")
 
     await ctx.send(embed=embed, delete_after=30)
 
