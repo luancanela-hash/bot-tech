@@ -270,7 +270,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões de gerenciar e abrir a sala)
+        # 3. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -300,7 +300,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 4. Responde ao Modal sem enviar mensagens privadas indesejadas
+        # 4. Responde ao Modal de forma limpa (sem mensagem privada)
         await interaction.response.defer(ephemeral=True)
 
         # Resetar o seletor no painel principal
@@ -365,7 +365,7 @@ class StreamDonoView(View):
             row=0
         ))
 
-        # Adiciona o botão de Abrir a Sala na Linha 1 exclusivamente para o dono acessar de forma rápida
+        # Adiciona o botão de Abrir a Sala na Linha 1
         self.add_item(Button(
             label="Abrir sua live",
             url=url_sala,
