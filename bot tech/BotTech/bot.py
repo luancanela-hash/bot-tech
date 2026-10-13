@@ -226,11 +226,11 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         max_length=80
     )
 
-    def __init__(self, sala_id: str, dados_sala: dict, parent_interaction: discord.Interaction):
+    def __init__(self, sala_id: str, dados_sala: dict, parent_message: discord.Message):
         super().__init__()
         self.sala_id = sala_id
         self.dados_sala = dados_sala
-        self.parent_interaction = parent_interaction
+        self.parent_message = parent_message
 
     async def on_submit(self, interaction: discord.Interaction):
         jogo_definido = self.nome_jogo.value
@@ -238,7 +238,11 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         SALAS_EM_USO[self.sala_id] = user.id
 
-        await interaction.response.defer(ephemeral=True)
+        # Restaura imediatamente o painel principal para o texto padrão "Selecione a sala..."
+        try:
+            await self.parent_message.edit(view=StreamPainelView())
+        except Exception:
+            pass
 
         view_publica = StreamPublicoView(
             author_id=user.id,
@@ -275,7 +279,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_publica.msg_publica = msg_publica
         view_dono.msg_publica = msg_publica
 
-        # 2. Envia o Painel do Dono contendo o botão "Abrir sua live" blindado e os comandos administrativos
+        # 2. Envia o Painel do Dono contendo o botão "Abrir sua live" blindado
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -293,6 +297,12 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_publica.msg_dono = msg_dono
         view_dono.msg_dono = msg_dono
 
+        # 3. Confirmação privada para o criador da sala
+        await interaction.response.send_message(
+            f"🚀 Sala preenchida com sucesso! Utilize o botão **Abrir sua live** no painel abaixo para aceder.",
+            ephemeral=True
+        )
+
         async def limpar_sala_expirada():
             await asyncio.sleep(18000)
             if self.sala_id in SALAS_EM_USO and SALAS_EM_USO[self.sala_id] == user.id:
@@ -303,15 +313,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             except Exception:
                 pass
 
-        async def resetar_painel_stream():
-            await asyncio.sleep(15)
-            try:
-                await self.parent_interaction.message.edit(view=StreamPainelView())
-            except Exception:
-                pass
-
         asyncio.create_task(limpar_sala_expirada())
-        asyncio.create_task(resetar_painel_stream())
 
 
 # --- VIEW PÚBLICA (ESPECTADORES) ---
@@ -376,7 +378,6 @@ class StreamDonoView(View):
             )
             return
 
-        # Se for o dono ou admin, envia o link de forma privada (efêmera) para ele entrar
         await interaction.response.send_message(
             f"🚀 Aqui está o seu link de acesso seguro para a **{self.dados_sala['nome']}**: {self.url_sala}",
             ephemeral=True
@@ -470,7 +471,7 @@ class SelectSalaKosmi(Select):
             )
 
         await interaction.response.send_modal(
-            ModalCriarStream(sala_id=sala_id, dados_sala=dados_sala, parent_interaction=interaction)
+            ModalCriarStream(sala_id=sala_id, dados_sala=dados_sala, parent_message=interaction.message)
         )
 
 class StreamPainelView(View):
