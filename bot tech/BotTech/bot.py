@@ -241,7 +241,10 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         SALAS_EM_USO[self.sala_id] = user.id
 
-        # 1. Instancia as Views
+        # 1. Responde primeiro ao modal para evitar erro de timeout/falha na interação
+        await interaction.response.defer(ephemeral=True)
+
+        # 2. Instancia as Views
         view_publica = StreamPublicoView(
             author_id=user.id,
             sala_id=self.sala_id,
@@ -251,7 +254,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_dono = StreamDonoView(stream_publico_view=view_publica, url_sala=self.dados_sala['url'])
 
-        # 2. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE com Pipoca 🍿)
+        # 3. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE com Pipoca 🍿)
         embed_publico = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
@@ -270,7 +273,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões)
+        # 4. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -299,9 +302,6 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
                 pass
 
         asyncio.create_task(limpar_sala_expirada())
-
-        # 4. Responde ao Modal de forma limpa (sem mensagem privada)
-        await interaction.response.defer(ephemeral=True)
 
         # Resetar o seletor no painel principal
         async def resetar_painel_stream():
