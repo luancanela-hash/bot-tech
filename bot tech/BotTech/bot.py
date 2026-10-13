@@ -261,7 +261,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         # 1. Envia a mensagem pública para os espectadores
         embed_publico = discord.Embed(
-            title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
+            title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA",
             description=(
                 f"🎮 {user.mention} acabou de iniciar uma transmissão na **{self.dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `{jogo_definido}`\n\n"
@@ -279,7 +279,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_publica.msg_publica = msg_publica
         view_dono.msg_publica = msg_publica
 
-        # 2. Envia o Painel do Dono contendo o botão "Abrir sua live" blindado
+        # 2. Envia o Painel do Dono contendo o botão "Abrir Sua Live" blindado
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -299,7 +299,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         # 3. Confirmação privada para o criador da sala
         await interaction.response.send_message(
-            f"🚀 Sala preenchida com sucesso! Utilize o botão **Abrir sua live** no painel abaixo para aceder.",
+            "Sala preenchida com sucesso! Utilize o botão **Abrir Sua Live** no painel abaixo para gerar sua sala.",
             ephemeral=True
         )
 
@@ -367,7 +367,7 @@ class StreamDonoView(View):
         )
         await interaction.response.edit_message(embed=embed_dono, view=self)
 
-    @button(label="Abrir sua live", style=discord.ButtonStyle.secondary, emoji="🚀", custom_id="btn_abrir_live_protegido", row=1)
+    @button(label="Abrir Sua Live", style=discord.ButtonStyle.primary, emoji="🎥", custom_id="btn_abrir_live_protegido", row=1)
     async def btn_abrir_live(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
@@ -379,7 +379,7 @@ class StreamDonoView(View):
             return
 
         await interaction.response.send_message(
-            f"🚀 Aqui está o seu link de acesso seguro para a **{self.dados_sala['nome']}**: {self.url_sala}",
+            f"🔗 Acesso à **{self.dados_sala['nome']}**: {self.url_sala}",
             ephemeral=True
         )
 
