@@ -249,7 +249,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             dados_sala=self.dados_sala,
             jogo_inicial=jogo_definido
         )
-        view_dono = StreamDonoView(stream_publico_view=view_publica)
+        view_dono = StreamDonoView(stream_publico_view=view_publica, url_sala=self.dados_sala['url'])
 
         # 2. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE com Pipoca 🍿)
         embed_publico = discord.Embed(
@@ -270,7 +270,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_publica.msg_publica = msg_publica
 
-        # 3. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala)
+        # 3. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões de gerenciar e abrir a sala)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -300,20 +300,8 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 4. Responde ao Modal enviando a mensagem efêmera "Sua sala está pronta!" visível apenas para o dono
-        embed_privado = discord.Embed(
-            title=f"🚀 {user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
-            description=(
-                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
-            ),
-            color=self.dados_sala["cor"]
-        )
-
-        await interaction.response.send_message(
-            embed=embed_privado,
-            view=StreamPrivadoView(url_sala=self.dados_sala['url']),
-            ephemeral=True
-        )
+        # 4. Responde ao Modal sem enviar mensagens privadas indesejadas
+        await interaction.response.defer(ephemeral=True)
 
         # Resetar o seletor no painel principal
         async def resetar_painel_stream():
@@ -355,9 +343,36 @@ class StreamPublicoView(View):
 # --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
 
 class StreamDonoView(View):
-    def __init__(self, stream_publico_view: StreamPublicoView):
+    def __init__(self, stream_publico_view: StreamPublicoView, url_sala: str):
         super().__init__(timeout=None)
         self.stream_publico_view = stream_publico_view
+
+        # Adiciona o botão de Prorrogar na Linha 0
+        self.add_item(Button(
+            label="Prorrogar (+1h)",
+            style=discord.ButtonStyle.success,
+            emoji="⏱️",
+            custom_id="btn_prorrogar_stream",
+            row=0
+        ))
+
+        # Adiciona o botão de Encerrar na Linha 0
+        self.add_item(Button(
+            label="Encerrar Transmissão",
+            style=discord.ButtonStyle.danger,
+            emoji="⏹️",
+            custom_id="btn_fechar_stream_publico",
+            row=0
+        ))
+
+        # Adiciona o botão de Abrir a Sala na Linha 1 exclusivamente para o dono acessar de forma rápida
+        self.add_item(Button(
+            label="Abrir sua live",
+            url=url_sala,
+            style=discord.ButtonStyle.link,
+            emoji="🚀",
+            row=1
+        ))
 
     async def atualizar_embed_dono(self, interaction: discord.Interaction):
         timestamp_unix = int(self.stream_publico_view.tempo_encerramento.timestamp())
@@ -419,19 +434,6 @@ class StreamDonoView(View):
             await interaction.channel.send("🛑 Transmissão encerrada com sucesso!", delete_after=3)
         except Exception:
             await interaction.channel.send("❌ Não foi possível apagar a mensagem.", delete_after=3)
-
-
-# --- VIEW PRIVADA DA SALA PRONTA ---
-
-class StreamPrivadoView(View):
-    def __init__(self, url_sala: str):
-        super().__init__(timeout=None)
-        self.add_item(Button(
-            label="Abrir sua live",
-            url=url_sala,
-            style=discord.ButtonStyle.link,
-            emoji="🚀"
-        ))
 
 
 # --- PAINEL E SELETOR DE SALAS DE TRANSMISSÃO ---
