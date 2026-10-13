@@ -101,7 +101,7 @@ class DropdownJogos(Select):
             await interaction.response.defer()
             return await interaction.channel.send("Nenhum jogo disponível.", delete_after=5)
 
-        # Trava para impedir que o mesmo jogo seja requisitado simultaneamente no chat geral
+        # Trava para impedir solicitações simultâneas do mesmo jogo
         if nome_arquivo in JOGOS_EM_DOWNLOAD:
             await interaction.response.defer()
             return await interaction.channel.send(
@@ -116,7 +116,7 @@ class DropdownJogos(Select):
             arquivo = discord.File(caminho_arquivo)
             await interaction.response.defer()
             
-            # Envia publicamente no chat geral para todos, com exclusão automática em 1 minuto
+            # Envia publicamente no chat geral com exclusão automática em 1 minuto
             await interaction.channel.send(
                 content=f"📥 {interaction.user.mention} solicitou o arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
                 file=arquivo,
@@ -130,7 +130,6 @@ class DropdownJogos(Select):
             )
             JOGOS_EM_DOWNLOAD.discard(nome_arquivo)
 
-        # Libera o jogo da trava após 1 minuto
         async def liberar_jogo():
             await asyncio.sleep(60)
             JOGOS_EM_DOWNLOAD.discard(nome_arquivo)
@@ -241,10 +240,8 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         SALAS_EM_USO[self.sala_id] = user.id
 
-        # 1. Responde primeiro ao modal para evitar erro de timeout/falha na interação
         await interaction.response.defer(ephemeral=True)
 
-        # 2. Instancia as Views
         view_publica = StreamPublicoView(
             author_id=user.id,
             sala_id=self.sala_id,
@@ -252,9 +249,14 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             dados_sala=self.dados_sala,
             jogo_inicial=jogo_definido
         )
-        view_dono = StreamDonoView(stream_publico_view=view_publica, url_sala=self.dados_sala['url'])
+        view_dono = StreamDonoView(
+            author_id=user.id,
+            sala_id=self.sala_id,
+            url_sala=self.dados_sala['url'],
+            dados_sala=self.dados_sala
+        )
+        view_dono.stream_publico_view = view_publica
 
-        # 3. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE com Pipoca 🍿)
         embed_publico = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
@@ -272,8 +274,8 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             delete_after=18000
         )
         view_publica.msg_publica = msg_publica
+        view_dono.msg_publica = msg_publica
 
-        # 4. Envia a Segunda Mensagem (Embed de Controle do Dono da Sala com os botões)
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -289,8 +291,8 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             delete_after=18000
         )
         view_publica.msg_dono = msg_dono
+        view_dono.msg_dono = msg_dono
 
-        # Limpeza automatizada da sala
         async def limpar_sala_expirada():
             await asyncio.sleep(18000)
             if self.sala_id in SALAS_EM_USO and SALAS_EM_USO[self.sala_id] == user.id:
@@ -301,9 +303,6 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             except Exception:
                 pass
 
-        asyncio.create_task(limpar_sala_expirada())
-
-        # Resetar o seletor no painel principal
         async def resetar_painel_stream():
             await asyncio.sleep(15)
             try:
@@ -311,6 +310,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             except Exception:
                 pass
 
+        asyncio.create_task(limpar_sala_expirada())
         asyncio.create_task(resetar_painel_stream())
 
 
@@ -330,7 +330,6 @@ class StreamPublicoView(View):
         self.msg_publica = None
         self.msg_dono = None
 
-        # Botão exclusivo "ASSISTIR LIVE" com emoji de pipoca 🍿
         self.add_item(Button(
             label="ASSISTIR LIVE",
             url=url_sala,
@@ -343,29 +342,18 @@ class StreamPublicoView(View):
 # --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
 
 class StreamDonoView(View):
-    def __init__(self, stream_publico_view: StreamPublicoView, url_sala: str):
+    def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
         super().__init__(timeout=None)
-        self.stream_publico_view = stream_publico_view
+        self.author_id = author_id
+        self.sala_id = sala_id
+        self.dados_sala = dados_sala
+        self.horas_totais = 3
+        self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
+        self.msg_publica = None
+        self.msg_dono = None
+        self.stream_publico_view = None
 
-        # Adiciona o botão de Prorrogar na Linha 0
-        self.add_item(Button(
-            label="Prorrogar (+1h)",
-            style=discord.ButtonStyle.success,
-            emoji="⏱️",
-            custom_id="btn_prorrogar_stream",
-            row=0
-        ))
-
-        # Adiciona o botão de Encerrar na Linha 0
-        self.add_item(Button(
-            label="Encerrar Transmissão",
-            style=discord.ButtonStyle.danger,
-            emoji="⏹️",
-            custom_id="btn_fechar_stream_publico",
-            row=0
-        ))
-
-        # Adiciona o botão de Abrir a Sala na Linha 1
+        # Adiciona o botão de link diretamente na linha 1 de forma segura
         self.add_item(Button(
             label="Abrir sua live",
             url=url_sala,
@@ -375,13 +363,13 @@ class StreamDonoView(View):
         ))
 
     async def atualizar_embed_dono(self, interaction: discord.Interaction):
-        timestamp_unix = int(self.stream_publico_view.tempo_encerramento.timestamp())
+        timestamp_unix = int(self.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
-                f"🛠️ **Funções do Dono da Sala (<@{self.stream_publico_view.author_id}>):**\n\n"
+                f"🛠️ **Funções do Dono da Sala (<@{self.author_id}>):**\n\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>"
             ),
-            color=self.stream_publico_view.dados_sala["cor"]
+            color=self.dados_sala["cor"]
         )
         await interaction.response.edit_message(embed=embed_dono, view=self)
 
@@ -389,46 +377,47 @@ class StreamDonoView(View):
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
         
-        if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
+        if interaction.user.id != self.author_id and not is_admin:
             await interaction.response.defer()
             return await interaction.channel.send(
-                f"⚠️ {interaction.user.mention}, apenas <@{self.stream_publico_view.author_id}> (dono da sala) ou Administradores podem prorrogar a duração!",
+                f"⚠️ {interaction.user.mention}, apenas <@{self.author_id}> (dono da sala) ou Administradores podem prorrogar a duração!",
                 delete_after=5
             )
 
-        if self.stream_publico_view.horas_totais >= 5:
+        if self.horas_totais >= 5:
             await interaction.response.defer()
             return await interaction.channel.send(
                 f"⚠️ {interaction.user.mention}, a transmissão já atingiu o limite máximo permitido de **5 horas**!",
                 delete_after=5
             )
 
-        self.stream_publico_view.horas_totais += 1
-        self.stream_publico_view.tempo_encerramento += timedelta(hours=1)
+        self.horas_totais += 1
+        self.tempo_encerramento += timedelta(hours=1)
+        if self.stream_publico_view:
+            self.stream_publico_view.tempo_encerramento = self.tempo_encerramento
+
         await self.atualizar_embed_dono(interaction)
-        
         await interaction.channel.send("⏱️ Transmissão prorrogada em +1 hora com sucesso!", delete_after=3)
 
     @button(label="Encerrar Transmissão", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream_publico", row=0)
     async def fechar_stream(self, interaction: discord.Interaction, button: Button):
         is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
 
-        if interaction.user.id != self.stream_publico_view.author_id and not is_admin:
+        if interaction.user.id != self.author_id and not is_admin:
             await interaction.response.defer()
             return await interaction.channel.send(
-                f"⚠️ {interaction.user.mention}, apenas <@{self.stream_publico_view.author_id}> (dono da sala) ou Administradores podem encerrar esta transmissão!",
+                f"⚠️ {interaction.user.mention}, apenas <@{self.author_id}> (dono da sala) ou Administradores podem encerrar esta transmissão!",
                 delete_after=5
             )
 
-        sala_id = self.stream_publico_view.sala_id
-        if sala_id in SALAS_EM_USO:
-            del SALAS_EM_USO[sala_id]
+        if self.sala_id in SALAS_EM_USO:
+            del SALAS_EM_USO[self.sala_id]
 
         try:
-            if self.stream_publico_view.msg_publica:
-                await self.stream_publico_view.msg_publica.delete()
-            if self.stream_publico_view.msg_dono:
-                await self.stream_publico_view.msg_dono.delete()
+            if self.msg_publica:
+                await self.msg_publica.delete()
+            if self.msg_dono:
+                await self.msg_dono.delete()
             
             await interaction.response.defer()
             await interaction.channel.send("🛑 Transmissão encerrada com sucesso!", delete_after=3)
@@ -471,7 +460,6 @@ class SelectSalaKosmi(Select):
                 delete_after=5
             )
 
-        # Abre diretamente o Modal para pedir o nome do jogo
         await interaction.response.send_modal(
             ModalCriarStream(sala_id=sala_id, dados_sala=dados_sala, parent_interaction=interaction)
         )
