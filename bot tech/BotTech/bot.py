@@ -1,6 +1,7 @@
 import os
 import asyncio
 import threading
+import random
 from datetime import datetime, timedelta, timezone
 from flask import Flask
 import discord
@@ -25,6 +26,7 @@ TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.voice_states = True  # Necessário para ler os membros conectados no canal de voz
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -277,7 +279,6 @@ class StreamDonoView(View):
             )
             return
 
-        # Envia a mensagem privada efêmera com o botão direto ajustado
         view_link = View()
         view_link.add_item(Button(
             label=f"Acessar {self.dados_sala['nome']}",
@@ -382,7 +383,6 @@ class SelectSalaKosmi(Select):
         user = interaction.user
         SALAS_EM_USO[sala_id] = user.id
 
-        # Restaura imediatamente o painel principal para o texto padrão "Selecione a sala..."
         try:
             await interaction.message.edit(view=StreamPainelView())
         except Exception:
@@ -402,7 +402,6 @@ class SelectSalaKosmi(Select):
         )
         view_dono.stream_publico_view = view_publica
 
-        # 1. Envia a mensagem pública para os espectadores
         embed_publico = discord.Embed(
             title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA",
             description=(
@@ -421,7 +420,6 @@ class SelectSalaKosmi(Select):
         view_publica.msg_publica = msg_publica
         view_dono.msg_publica = msg_publica
 
-        # 2. Envia o Painel do Dono contendo o botão "Abrir Sua Live" blindado
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
@@ -439,7 +437,6 @@ class SelectSalaKosmi(Select):
         view_publica.msg_dono = msg_dono
         view_dono.msg_dono = msg_dono
 
-        # Resposta silenciosa de confirmação (defer) para evitar notificações vazias
         await interaction.response.defer()
 
         async def limpar_sala_expirada():
@@ -498,6 +495,56 @@ async def painel_stream(ctx):
     )
     await ctx.send(embed=embed, view=StreamPainelView())
 
+# --- NOVO COMANDO: SORTEADOR E DIVISOR DE TIMES ---
+@bot.command(name="times", aliases=["sortear", "dividir"])
+@commands.has_permissions(administrator=True)
+async def sortear_times(ctx):
+    if not ctx.author.voice or not ctx.author.voice.channel:
+        await ctx.send("❌ Você precisa estar conectado a um canal de voz para sortear os times!", delete_after=5)
+        return
+
+    canal_voz = ctx.author.voice.channel
+    jogadores = [membro.display_name for membro in canal_voz.members if not membro.bot]
+
+    if len(jogadores) < 2:
+        await ctx.send(f"❌ É necessário ter pelo menos 2 pessoas no canal de voz **{canal_voz.name}** para montar times.", delete_after=5)
+        return
+
+    random.shuffle(jogadores)
+
+    metade = len(jogadores) // 2
+    time_alpha = jogadores[:metade]
+    time_bravo = jogadores[metade : metade * 2]
+    reservas = jogadores[metade * 2 :]
+
+    embed = discord.Embed(
+        title="🎲 Divisão de Times",
+        description=f"Sorteio realizado entre os membros do canal **{canal_voz.name}** ({len(jogadores)} jogadores)!",
+        color=discord.Color.gold()
+    )
+
+    embed.add_field(
+        name=f"🔴 Time Alpha ({len(time_alpha)})",
+        value="\n".join([f"• {p}" for p in time_alpha]),
+        inline=True
+    )
+    
+    embed.add_field(
+        name=f"🔵 Time Bravo ({len(time_bravo)})",
+        value="\n".join([f"• {p}" for p in time_bravo]),
+        inline=True
+    )
+
+    if reservas:
+        embed.add_field(
+            name="⏳ Reservas / Próxima",
+            value="\n".join([f"• {p}" for p in reservas]),
+            inline=False
+        )
+
+    embed.set_footer(text="Bom jogo e boa sorte aos times!")
+    await ctx.send(embed=embed)
+
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def comandos(ctx):
@@ -519,6 +566,11 @@ async def comandos(ctx):
     embed.add_field(
         name="`!painel_stream`",
         value="Envia o painel limpo com a descrição e o menu suspenso para iniciar avisos de transmissão.",
+        inline=False
+    )
+    embed.add_field(
+        name="`!times` (ou `!sortear` / `!dividir`)",
+        value="Lê os membros do seu canal de voz atual e divide aleatoriamente em Time Alpha e Time Bravo (ex: para Age of Empires).",
         inline=False
     )
     embed.add_field(
