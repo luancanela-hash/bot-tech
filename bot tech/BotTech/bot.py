@@ -216,6 +216,23 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
+# --- MODAL DE EXIBIÇÃO DO LINK DA SALA ---
+
+class ModalExibirLink(Modal, title="🚀 Link de Acesso à Sala"):
+    def __init__(self, nome_sala: str, url_sala: str):
+        super().__init__()
+        self.link_field = TextInput(
+            label=f"Acesso à {nome_sala}",
+            default=url_sala,
+            required=False,
+            style=discord.TextStyle.short
+        )
+        self.add_item(self.link_field)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+
 # --- MODAL INICIAL AO SELECIONAR A SALA ---
 
 class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
@@ -378,9 +395,9 @@ class StreamDonoView(View):
             )
             return
 
-        await interaction.response.send_message(
-            f"🔗 Acesso à **{self.dados_sala['nome']}**: {self.url_sala}",
-            ephemeral=True
+        # Abre uma janela modal no centro da tela com o link direto
+        await interaction.response.send_modal(
+            ModalExibirLink(nome_sala=self.dados_sala['nome'], url_sala=self.url_sala)
         )
 
     @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=0)
