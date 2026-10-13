@@ -332,7 +332,7 @@ class StreamPublicoView(View):
             label="Assistir live",
             url=url_sala,
             style=discord.ButtonStyle.link,
-            emoji="👀",
+            emoji="🍿",
             row=0
         ))
 
