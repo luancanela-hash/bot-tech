@@ -216,134 +216,16 @@ class DropdownView(View):
         await interaction.response.edit_message(view=nova_view)
 
 
-# --- MODAL DE EXIBIÇÃO DO LINK DA SALA ---
-
-class ModalExibirLink(Modal, title="🚀 Link de Acesso à Sala"):
-    def __init__(self, nome_sala: str, url_sala: str):
-        super().__init__()
-        self.link_field = TextInput(
-            label=f"Acesso à {nome_sala}",
-            default=url_sala,
-            required=False,
-            style=discord.TextStyle.short
-        )
-        self.add_item(self.link_field)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-
-
-# --- MODAL INICIAL AO SELECIONAR A SALA ---
-
-class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
-    nome_jogo = TextInput(
-        label="Jogo ou Atividade em exibição",
-        placeholder="Ex: Call of Duty, Valorant, Resenha...",
-        required=True,
-        max_length=80
-    )
-
-    def __init__(self, sala_id: str, dados_sala: dict, parent_message: discord.Message):
-        super().__init__()
-        self.sala_id = sala_id
-        self.dados_sala = dados_sala
-        self.parent_message = parent_message
-
-    async def on_submit(self, interaction: discord.Interaction):
-        jogo_definido = self.nome_jogo.value
-        user = interaction.user
-
-        SALAS_EM_USO[self.sala_id] = user.id
-
-        # Restaura imediatamente o painel principal para o texto padrão "Selecione a sala..."
-        try:
-            await self.parent_message.edit(view=StreamPainelView())
-        except Exception:
-            pass
-
-        view_publica = StreamPublicoView(
-            author_id=user.id,
-            sala_id=self.sala_id,
-            url_sala=self.dados_sala['url'],
-            dados_sala=self.dados_sala,
-            jogo_inicial=jogo_definido
-        )
-        view_dono = StreamDonoView(
-            author_id=user.id,
-            sala_id=self.sala_id,
-            url_sala=self.dados_sala['url'],
-            dados_sala=self.dados_sala
-        )
-        view_dono.stream_publico_view = view_publica
-
-        # 1. Envia a mensagem pública para os espectadores
-        embed_publico = discord.Embed(
-            title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA",
-            description=(
-                f"🎮 {user.mention} acabou de iniciar uma transmissão na **{self.dados_sala['nome']}**!\n\n"
-                f"🕹️ **Transmitindo:** `{jogo_definido}`\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **ASSISTIR LIVE** abaixo para entrar no espaço."
-            ),
-            color=self.dados_sala["cor"]
-        )
-
-        msg_publica = await interaction.channel.send(
-            embed=embed_publico,
-            view=view_publica,
-            delete_after=18000
-        )
-        view_publica.msg_publica = msg_publica
-        view_dono.msg_publica = msg_publica
-
-        # 2. Envia o Painel do Dono contendo o botão "Abrir Sua Live" blindado
-        timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
-        embed_dono = discord.Embed(
-            description=(
-                f"🛠️ **PAINEL DO DONO ({user.mention}):**\n\n"
-                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>"
-            ),
-            color=self.dados_sala["cor"]
-        )
-
-        msg_dono = await interaction.channel.send(
-            embed=embed_dono,
-            view=view_dono,
-            delete_after=18000
-        )
-        view_publica.msg_dono = msg_dono
-        view_dono.msg_dono = msg_dono
-
-        # 3. Confirmação privada para o criador da sala
-        await interaction.response.send_message(
-            "Sala preenchida com sucesso! Utilize o botão **Abrir Sua Live** no painel abaixo para gerar sua sala.",
-            ephemeral=True
-        )
-
-        async def limpar_sala_expirada():
-            await asyncio.sleep(18000)
-            if self.sala_id in SALAS_EM_USO and SALAS_EM_USO[self.sala_id] == user.id:
-                del SALAS_EM_USO[self.sala_id]
-            try:
-                await msg_publica.delete()
-                await msg_dono.delete()
-            except Exception:
-                pass
-
-        asyncio.create_task(limpar_sala_expirada())
-
-
 # --- VIEW PÚBLICA (ESPECTADORES) ---
 
 class StreamPublicoView(View):
-    def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict, jogo_inicial: str):
+    def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
         super().__init__(timeout=None)
         self.author_id = author_id
         self.sala_id = sala_id
         self.url_sala = url_sala
         self.dados_sala = dados_sala
         
-        self.jogo_atual = jogo_inicial
         self.horas_totais = 3
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
         self.msg_publica = None
@@ -395,9 +277,19 @@ class StreamDonoView(View):
             )
             return
 
-        # Abre uma janela modal no centro da tela com o link direto
-        await interaction.response.send_modal(
-            ModalExibirLink(nome_sala=self.dados_sala['nome'], url_sala=self.url_sala)
+        # Cria um botão de link direto seguro para acesso instantâneo sem edição de texto
+        view_link = View()
+        view_link.add_item(Button(
+            label=f"Acessar {self.dados_sala['nome']}",
+            url=self.url_sala,
+            style=discord.ButtonStyle.link,
+            emoji="🔗"
+        ))
+
+        await interaction.response.send_message(
+            f"🔗 Acesso à **{self.dados_sala['nome']}**:",
+            view=view_link,
+            ephemeral=True
         )
 
     @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=0)
@@ -487,9 +379,80 @@ class SelectSalaKosmi(Select):
                 delete_after=5
             )
 
-        await interaction.response.send_modal(
-            ModalCriarStream(sala_id=sala_id, dados_sala=dados_sala, parent_message=interaction.message)
+        user = interaction.user
+        SALAS_EM_USO[sala_id] = user.id
+
+        # Restaura imediatamente o painel principal para o texto padrão "Selecione a sala..."
+        try:
+            await interaction.message.edit(view=StreamPainelView())
+        except Exception:
+            pass
+
+        view_publica = StreamPublicoView(
+            author_id=user.id,
+            sala_id=sala_id,
+            url_sala=dados_sala['url'],
+            dados_sala=dados_sala
         )
+        view_dono = StreamDonoView(
+            author_id=user.id,
+            sala_id=sala_id,
+            url_sala=dados_sala['url'],
+            dados_sala=dados_sala
+        )
+        view_dono.stream_publico_view = view_publica
+
+        # 1. Envia a mensagem pública para os espectadores
+        embed_publico = discord.Embed(
+            title=f"{dados_sala['emoji']} TRANSMISSÃO INICIADA",
+            description=(
+                f"🎮 {user.mention} acabou de iniciar uma transmissão na **{dados_sala['nome']}**!\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Clique no botão **ASSISTIR LIVE** abaixo para entrar no espaço."
+            ),
+            color=dados_sala["cor"]
+        )
+
+        msg_publica = await interaction.channel.send(
+            embed=embed_publico,
+            view=view_publica,
+            delete_after=18000
+        )
+        view_publica.msg_publica = msg_publica
+        view_dono.msg_publica = msg_publica
+
+        # 2. Envia o Painel do Dono contendo o botão "Abrir Sua Live" blindado
+        timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
+        embed_dono = discord.Embed(
+            description=(
+                f"🛠️ **PAINEL DO DONO ({user.mention}):**\n\n"
+                f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>"
+            ),
+            color=dados_sala["cor"]
+        )
+
+        msg_dono = await interaction.channel.send(
+            embed=embed_dono,
+            view=view_dono,
+            delete_after=18000
+        )
+        view_publica.msg_dono = msg_dono
+        view_dono.msg_dono = msg_dono
+
+        # Resposta silenciosa de confirmação (defer) para evitar notificações vazias
+        await interaction.response.defer()
+
+        async def limpar_sala_expirada():
+            await asyncio.sleep(18000)
+            if sala_id in SALAS_EM_USO and SALAS_EM_USO[sala_id] == user.id:
+                del SALAS_EM_USO[sala_id]
+            try:
+                await msg_publica.delete()
+                await msg_dono.delete()
+            except Exception:
+                pass
+
+        asyncio.create_task(limpar_sala_expirada())
 
 class StreamPainelView(View):
     def __init__(self):
