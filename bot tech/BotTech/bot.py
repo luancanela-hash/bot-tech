@@ -277,7 +277,7 @@ class StreamDonoView(View):
             )
             return
 
-        # Cria um botão de link direto seguro para acesso instantâneo sem edição de texto
+        # Envia a mensagem privada efêmera com o botão direto ajustado
         view_link = View()
         view_link.add_item(Button(
             label=f"Acessar {self.dados_sala['nome']}",
@@ -287,7 +287,7 @@ class StreamDonoView(View):
         ))
 
         await interaction.response.send_message(
-            f"🔗 Acesso à **{self.dados_sala['nome']}**:",
+            f"🚀 Clique abaixo para entrar na sua sala:",
             view=view_link,
             ephemeral=True
         )
