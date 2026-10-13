@@ -498,12 +498,9 @@ async def painel_stream(ctx):
 # --- COMANDO PÚBLICO PARA TODOS OS MEMBROS: SORTEADOR DE TIMES ---
 @bot.command(name="times", aliases=["sortear", "dividir"])
 async def sortear_times(ctx, num_times: int = 2):
-    # CANAL PERMITIDO PARA OS COMANDOS DE TIMES (Altere se o nome do canal for diferente)
-    CANAL_PERMITIDO = "sortear-times"
-
-    if ctx.channel.name != CANAL_PERMITIDO:
-        canal_obj = discord.utils.get(ctx.guild.text_channels, name=CANAL_PERMITIDO)
-        mencao_canal = f"<#{canal_obj.id}>" if canal_obj else f"#{CANAL_PERMITIDO}"
+    if "sortear" not in ctx.channel.name.lower():
+        canal_destino = next((c for c in ctx.guild.text_channels if "sortear" in c.name.lower()), None)
+        mencao_canal = f"<#{canal_destino.id}>" if canal_destino else "no canal de sorteio de times"
         
         await ctx.send(
             f"❌ {ctx.author.mention}, este comando só pode ser utilizado no canal {mencao_canal}!",
@@ -561,8 +558,10 @@ async def sortear_times(ctx, num_times: int = 2):
             inline=True
         )
 
-    embed.set_footer(text="Bom jogo e boa sorte aos times!")
-    await ctx.send(embed=embed)
+    embed.set_footer(text="Bom jogo e boa sorte aos times! (Esta mensagem será apagada em 3 minutos)")
+    
+    # Envia a mensagem e configura para apagar automaticamente após 180 segundos (3 minutos)
+    await ctx.send(embed=embed, delete_after=180)
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -589,7 +588,7 @@ async def comandos(ctx):
     )
     embed.add_field(
         name="`!times [quantidade]` (ou `!sortear` / `!dividir`)",
-        value="Divide os membros do canal de voz em 2 ou mais times (ex: `!times 3`). **Uso exclusivo no canal #sortear-times** para todos os membros.",
+        value="Divide os membros do canal de voz em 2 ou mais times (ex: `!times 3`). **Uso exclusivo no canal de sorteio de times** (apaga após 3 minutos).",
         inline=False
     )
     embed.add_field(
