@@ -251,7 +251,7 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_dono = StreamDonoView(stream_publico_view=view_publica)
 
-        # 2. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE)
+        # 2. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE com Pipoca 🍿)
         embed_publico = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
@@ -346,12 +346,12 @@ class StreamPublicoView(View):
         self.msg_dono = None
         self.msg_dm = None
 
-        # Botão exclusivo "ASSISTIR LIVE" em maiúsculas
+        # Botão exclusivo "ASSISTIR LIVE" com emoji de pipoca 🍿
         self.add_item(Button(
             label="ASSISTIR LIVE",
             url=url_sala,
             style=discord.ButtonStyle.link,
-            emoji="👀",
+            emoji="🍿",
             row=0
         ))
 
@@ -504,7 +504,7 @@ async def enviar_menu(ctx):
     
     embed = discord.Embed(
         title="🎮 Jogos Co-op Liberados!",
-        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente em uma mensagem privada.\n\nUse os botões ◀️▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
+        description="Escolha o jogo no menu suspenso abaixo para receber o arquivo `.torrent` diretamente no chat.\n\nUse os botões ◀️▶️ para navegar pelas páginas ou clique em 🔍 Pesquisar Jogo para buscar diretamente.",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=DropdownView(pagina=1))
