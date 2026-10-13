@@ -498,6 +498,23 @@ async def painel_stream(ctx):
 # --- COMANDO PÚBLICO PARA TODOS OS MEMBROS: SORTEADOR DE TIMES ---
 @bot.command(name="times", aliases=["sortear", "dividir"])
 async def sortear_times(ctx, num_times: int = 2):
+    # CANAL PERMITIDO PARA OS COMANDOS DE TIMES (Altere se o nome do canal for diferente)
+    CANAL_PERMITIDO = "sortear-times"
+
+    if ctx.channel.name != CANAL_PERMITIDO:
+        canal_obj = discord.utils.get(ctx.guild.text_channels, name=CANAL_PERMITIDO)
+        mencao_canal = f"<#{canal_obj.id}>" if canal_obj else f"#{CANAL_PERMITIDO}"
+        
+        await ctx.send(
+            f"❌ {ctx.author.mention}, este comando só pode ser utilizado no canal {mencao_canal}!",
+            delete_after=5
+        )
+        try:
+            await ctx.message.delete()
+        except Exception:
+            pass
+        return
+
     if not ctx.author.voice or not ctx.author.voice.channel:
         await ctx.send("❌ Você precisa estar conectado a um canal de voz para sortear os times!", delete_after=5)
         return
@@ -572,7 +589,7 @@ async def comandos(ctx):
     )
     embed.add_field(
         name="`!times [quantidade]` (ou `!sortear` / `!dividir`)",
-        value="Lê os membros do seu canal de voz atual e divide em 2 ou mais times (ex: `!times 3` para 3 times). Libre para todos os membros.",
+        value="Divide os membros do canal de voz em 2 ou mais times (ex: `!times 3`). **Uso exclusivo no canal #sortear-times** para todos os membros.",
         inline=False
     )
     embed.add_field(
