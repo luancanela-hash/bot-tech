@@ -64,8 +64,9 @@ SALAS_KOSMI = {
     }
 }
 
-# --- DICIONÁRIO PARA CONTROLAR SALAS OCUPADAS ---
+# --- DICIONÁRIOS DE CONTROLE (SALAS E JOGOS EM USO) ---
 SALAS_EM_USO = {}
+JOGOS_EM_DOWNLOAD = set()
 
 # --- SISTEMA DE JOGOS CO-OP ---
 
@@ -97,32 +98,49 @@ class DropdownJogos(Select):
     async def callback(self, interaction: discord.Interaction):
         nome_arquivo = self.values[0]
         if nome_arquivo == "none":
-            return await interaction.response.send_message("Nenhum jogo disponível.", ephemeral=True)
+            await interaction.response.defer()
+            return await interaction.channel.send("Nenhum jogo disponível.", delete_after=5)
 
+        # Trava para impedir que o mesmo jogo seja requisitado simultaneamente
+        if nome_arquivo in JOGOS_EM_DOWNLOAD:
+            await interaction.response.defer()
+            return await interaction.channel.send(
+                f"⚠️ {interaction.user.mention}, o arquivo para este jogo já foi solicitado recentemente e está ativo no chat. Aguarde um instante para solicitar novamente!",
+                delete_after=5
+            )
+
+        JOGOS_EM_DOWNLOAD.add(nome_arquivo)
         caminho_arquivo = os.path.join(PASTA_TORRENTS, nome_arquivo)
 
         try:
             arquivo = discord.File(caminho_arquivo)
-            await interaction.response.send_message(
-                content=f"Aqui está o seu arquivo para **{nome_arquivo.replace('.torrent', '')}**:",
+            await interaction.response.defer()
+            
+            # Envia publicamente no chat geral para todos, com exclusão automática em 1 minuto
+            msg_torrent = await interaction.channel.send(
+                content=f"📥 {interaction.user.mention} solicitou o arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
                 file=arquivo,
-                ephemeral=True
+                delete_after=60
             )
         except FileNotFoundError:
-            await interaction.response.send_message(
-                content="❌ O arquivo desse jogo não foi encontrado no servidor.",
-                ephemeral=True
+            await interaction.response.defer()
+            await interaction.channel.send(
+                content=f"❌ {interaction.user.mention}, o arquivo desse jogo não foi encontrado no servidor.",
+                delete_after=5
             )
+            JOGOS_EM_DOWNLOAD.discard(nome_arquivo)
 
-        async def resetar_menu():
+        # Libera o jogo da trava após 1 minuto
+        async def liberar_jogo():
             await asyncio.sleep(60)
+            JOGOS_EM_DOWNLOAD.discard(nome_arquivo)
             try:
                 view_atualizada = DropdownView(pagina=self.view.pagina, termo_busca=self.view.termo_busca)
                 await interaction.message.edit(view=view_atualizada)
             except Exception:
                 pass
 
-        asyncio.create_task(resetar_menu())
+        asyncio.create_task(liberar_jogo())
 
 class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
     termo = TextInput(
@@ -282,20 +300,23 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 4. Responde ao Modal enviando o aviso privado com o link
+        # 4. Responde ao Modal e envia a DM limpa para o dono gerenciar/abrir
+        await interaction.response.defer(ephemeral=True)
+
         embed_privado = discord.Embed(
             title=f"🚀 {user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
+                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**\n\n"
+                f"*(Esta mensagem será apagada automaticamente quando você encerrar a transmissão).* "
             ),
             color=self.dados_sala["cor"]
         )
 
-        await interaction.response.send_message(
-            embed=embed_privado,
-            view=StreamPrivadoView(url_sala=self.dados_sala['url']),
-            ephemeral=True
-        )
+        try:
+            msg_dm = await user.send(embed=embed_privado, view=StreamPrivadoView(url_sala=self.dados_sala['url']))
+            view_publica.msg_dm = msg_dm
+        except Exception:
+            pass
 
         # Resetar o seletor no painel principal
         async def resetar_painel_stream():
@@ -323,6 +344,7 @@ class StreamPublicoView(View):
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
         self.msg_publica = None
         self.msg_dono = None
+        self.msg_dm = None
 
         # Botão exclusivo "ASSISTIR LIVE" em maiúsculas
         self.add_item(Button(
@@ -392,6 +414,8 @@ class StreamDonoView(View):
             del SALAS_EM_USO[sala_id]
 
         try:
+            if self.stream_publico_view.msg_dm:
+                await self.stream_publico_view.msg_dm.delete()
             if self.stream_publico_view.msg_publica:
                 await self.stream_publico_view.msg_publica.delete()
             if self.stream_publico_view.msg_dono:
@@ -407,7 +431,7 @@ class StreamDonoView(View):
 
 class StreamPrivadoView(View):
     def __init__(self, url_sala: str):
-        super().__init__(timeout=120)
+        super().__init__(timeout=None)
         self.add_item(Button(
             label="Abrir sua live",
             url=url_sala,
