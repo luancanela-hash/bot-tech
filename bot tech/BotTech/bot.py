@@ -101,7 +101,7 @@ class DropdownJogos(Select):
             await interaction.response.defer()
             return await interaction.channel.send("Nenhum jogo disponível.", delete_after=5)
 
-        # Trava para impedir que o mesmo jogo seja requisitado simultaneamente
+        # Trava para impedir que o mesmo jogo seja requisitado simultaneamente no chat geral
         if nome_arquivo in JOGOS_EM_DOWNLOAD:
             await interaction.response.defer()
             return await interaction.channel.send(
@@ -117,7 +117,7 @@ class DropdownJogos(Select):
             await interaction.response.defer()
             
             # Envia publicamente no chat geral para todos, com exclusão automática em 1 minuto
-            msg_torrent = await interaction.channel.send(
+            await interaction.channel.send(
                 content=f"📥 {interaction.user.mention} solicitou o arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
                 file=arquivo,
                 delete_after=60
@@ -300,23 +300,20 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         asyncio.create_task(limpar_sala_expirada())
 
-        # 4. Responde ao Modal e envia a DM limpa para o dono gerenciar/abrir
-        await interaction.response.defer(ephemeral=True)
-
+        # 4. Responde ao Modal enviando a mensagem efêmera "Sua sala está pronta!" visível apenas para o dono
         embed_privado = discord.Embed(
             title=f"🚀 {user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
             description=(
-                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**\n\n"
-                f"*(Esta mensagem será apagada automaticamente quando você encerrar a transmissão).* "
+                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
             ),
             color=self.dados_sala["cor"]
         )
 
-        try:
-            msg_dm = await user.send(embed=embed_privado, view=StreamPrivadoView(url_sala=self.dados_sala['url']))
-            view_publica.msg_dm = msg_dm
-        except Exception:
-            pass
+        await interaction.response.send_message(
+            embed=embed_privado,
+            view=StreamPrivadoView(url_sala=self.dados_sala['url']),
+            ephemeral=True
+        )
 
         # Resetar o seletor no painel principal
         async def resetar_painel_stream():
@@ -344,7 +341,6 @@ class StreamPublicoView(View):
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
         self.msg_publica = None
         self.msg_dono = None
-        self.msg_dm = None
 
         # Botão exclusivo "ASSISTIR LIVE" com emoji de pipoca 🍿
         self.add_item(Button(
@@ -414,8 +410,6 @@ class StreamDonoView(View):
             del SALAS_EM_USO[sala_id]
 
         try:
-            if self.stream_publico_view.msg_dm:
-                await self.stream_publico_view.msg_dm.delete()
             if self.stream_publico_view.msg_publica:
                 await self.stream_publico_view.msg_publica.delete()
             if self.stream_publico_view.msg_dono:
