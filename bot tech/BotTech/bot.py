@@ -101,7 +101,6 @@ class DropdownJogos(Select):
             await interaction.response.defer()
             return await interaction.channel.send("Nenhum jogo disponível.", delete_after=5)
 
-        # Trava para impedir solicitações simultâneas do mesmo jogo
         if nome_arquivo in JOGOS_EM_DOWNLOAD:
             await interaction.response.defer()
             return await interaction.channel.send(
@@ -116,7 +115,6 @@ class DropdownJogos(Select):
             arquivo = discord.File(caminho_arquivo)
             await interaction.response.defer()
             
-            # Envia publicamente no chat geral com exclusão automática em 1 minuto
             await interaction.channel.send(
                 content=f"📥 {interaction.user.mention} solicitou o arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
                 file=arquivo,
@@ -240,6 +238,8 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
 
         SALAS_EM_USO[self.sala_id] = user.id
 
+        await interaction.response.defer(ephemeral=True)
+
         view_publica = StreamPublicoView(
             author_id=user.id,
             sala_id=self.sala_id,
@@ -250,10 +250,12 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_dono = StreamDonoView(
             author_id=user.id,
             sala_id=self.sala_id,
+            url_sala=self.dados_sala['url'],
             dados_sala=self.dados_sala
         )
         view_dono.stream_publico_view = view_publica
 
+        # 1. Envia a mensagem pública para os espectadores
         embed_publico = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
@@ -273,10 +275,11 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         view_publica.msg_publica = msg_publica
         view_dono.msg_publica = msg_publica
 
+        # 2. Envia o Painel do Dono contendo o botão "Abrir sua live" blindado e os comandos administrativos
         timestamp_unix = int(view_publica.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
-                f"🛠️ **Funções do Dono da Sala ({user.mention}):**\n\n"
+                f"🛠️ **PAINEL DO DONO ({user.mention}):**\n\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>"
             ),
             color=self.dados_sala["cor"]
@@ -289,21 +292,6 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_publica.msg_dono = msg_dono
         view_dono.msg_dono = msg_dono
-
-        # Resposta efêmera enviando o botão "Abrir sua live" exclusivamente para o dono
-        embed_privado = discord.Embed(
-            title=f"🚀 {user.display_name}, S U A  S A L A  E S T Á  P R O N T A !",
-            description=(
-                f"{self.dados_sala['emoji']} **Entre na sala, compartilhe a sua tela e divirta-se com o pessoal!**"
-            ),
-            color=self.dados_sala["cor"]
-        )
-
-        await interaction.response.send_message(
-            embed=embed_privado,
-            view=StreamPrivadoView(url_sala=self.dados_sala['url']),
-            ephemeral=True
-        )
 
         async def limpar_sala_expirada():
             await asyncio.sleep(18000)
@@ -351,27 +339,14 @@ class StreamPublicoView(View):
         ))
 
 
-# --- VIEW PRIVADA APENAS PARA O DONO ABRIR A LIVE ---
-
-class StreamPrivadoView(View):
-    def __init__(self, url_sala: str):
-        super().__init__(timeout=None)
-        self.add_item(Button(
-            label="Abrir sua live",
-            url=url_sala,
-            style=discord.ButtonStyle.link,
-            emoji="🚀",
-            row=0
-        ))
-
-
-# --- VIEW CONTROLE (DONO DA SALA / ADMIN) ---
+# --- VIEW CONTROLE (DONO DA SALA / ADMIN) COM BOTÃO PROTEGIDO ---
 
 class StreamDonoView(View):
-    def __init__(self, author_id: int, sala_id: str, dados_sala: dict):
+    def __init__(self, author_id: int, sala_id: str, url_sala: str, dados_sala: dict):
         super().__init__(timeout=None)
         self.author_id = author_id
         self.sala_id = sala_id
+        self.url_sala = url_sala
         self.dados_sala = dados_sala
         self.horas_totais = 3
         self.tempo_encerramento = datetime.now(timezone.utc) + timedelta(hours=3)
@@ -383,12 +358,29 @@ class StreamDonoView(View):
         timestamp_unix = int(self.tempo_encerramento.timestamp())
         embed_dono = discord.Embed(
             description=(
-                f"🛠️ **Funções do Dono da Sala (<@{self.author_id}>):**\n\n"
+                f"🛠️ **PAINEL DO DONO (<@{self.author_id}>):**\n\n"
                 f"⏳ **Encerramento Previsto:** <t:{timestamp_unix}:R>"
             ),
             color=self.dados_sala["cor"]
         )
         await interaction.response.edit_message(embed=embed_dono, view=self)
+
+    @button(label="Abrir sua live", style=discord.ButtonStyle.secondary, emoji="🚀", custom_id="btn_abrir_live_protegido", row=1)
+    async def btn_abrir_live(self, interaction: discord.Interaction, button: Button):
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+
+        if interaction.user.id != self.author_id and not is_admin:
+            await interaction.response.send_message(
+                f"⚠️ {interaction.user.mention}, apenas <@{self.author_id}> (dono da sala) ou Administradores podem abrir esta live!",
+                ephemeral=True
+            )
+            return
+
+        # Se for o dono ou admin, envia o link de forma privada (efêmera) para ele entrar
+        await interaction.response.send_message(
+            f"🚀 Aqui está o seu link de acesso seguro para a **{self.dados_sala['nome']}**: {self.url_sala}",
+            ephemeral=True
+        )
 
     @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar_stream", row=0)
     async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
