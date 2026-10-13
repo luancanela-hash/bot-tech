@@ -104,10 +104,9 @@ class DropdownJogos(Select):
         try:
             arquivo = discord.File(caminho_arquivo)
             await interaction.response.send_message(
-                content=f"Aqui está o seu arquivo para **{nome_arquivo.replace('.torrent', '')}** (esta mensagem sumirá em 1 minuto):",
+                content=f"Aqui está o seu arquivo para **{nome_arquivo.replace('.torrent', '')}**:",
                 file=arquivo,
-                ephemeral=True,
-                delete_after=60
+                ephemeral=True
             )
         except FileNotFoundError:
             await interaction.response.send_message(
@@ -234,14 +233,14 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
         )
         view_dono = StreamDonoView(stream_publico_view=view_publica)
 
-        # 2. Envia a Mensagem Pública (Anúncio da Live + Botão Assistir Live)
+        # 2. Envia a Mensagem Pública (Anúncio da Live + Botão ASSISTIR LIVE)
         embed_publico = discord.Embed(
             title=f"{self.dados_sala['emoji']} TRANSMISSÃO INICIADA POR:",
             description=(
                 f"🎮 {user.mention} acabou de iniciar uma transmissão na **{self.dados_sala['nome']}**!\n\n"
                 f"🕹️ **Transmitindo:** `{jogo_definido}`\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"Clique no botão **Assistir live** abaixo para entrar no espaço."
+                f"Clique no botão **ASSISTIR LIVE** abaixo para entrar no espaço."
             ),
             color=self.dados_sala["cor"]
         )
@@ -291,13 +290,11 @@ class ModalCriarStream(Modal, title="🎮 Definir Jogo / Atividade"):
             ),
             color=self.dados_sala["cor"]
         )
-        embed_privado.set_footer(text="Esta mensagem privada desaparecerá automaticamente após 2 minutos.")
 
         await interaction.response.send_message(
             embed=embed_privado,
             view=StreamPrivadoView(url_sala=self.dados_sala['url']),
-            ephemeral=True,
-            delete_after=120
+            ephemeral=True
         )
 
         # Resetar o seletor no painel principal
@@ -327,12 +324,12 @@ class StreamPublicoView(View):
         self.msg_publica = None
         self.msg_dono = None
 
-        # Botão exclusivo "Assistir live"
+        # Botão exclusivo "ASSISTIR LIVE" em maiúsculas
         self.add_item(Button(
-            label="Assistir live",
+            label="ASSISTIR LIVE",
             url=url_sala,
             style=discord.ButtonStyle.link,
-            emoji="🍿",
+            emoji="👀",
             row=0
         ))
 
