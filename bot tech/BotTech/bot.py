@@ -22,7 +22,7 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CÓDIGO DO BOT DO DISCORD ---
-TOKEN = os.environ.get("DISCORD_TOKEN")
+TOKEN = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -498,13 +498,11 @@ async def painel_stream(ctx):
 # --- COMANDO PÚBLICO PARA TODOS OS MEMBROS: SORTEADOR DE TIMES ---
 @bot.command(name="times", aliases=["sortear", "dividir"])
 async def sortear_times(ctx, num_times: int = 2):
-    # Apaga a mensagem enviada pelo usuário (!times) imediatamente
     try:
         await ctx.message.delete()
     except Exception:
         pass
 
-    # Validação do canal flexível (procura 'sortear' no nome limpo do canal)
     nome_canal_limpo = ctx.channel.name.lower().replace("︱", "").replace(" ", "").replace("_", "-")
     if "sortear" not in nome_canal_limpo:
         canal_destino = next((c for c in ctx.guild.text_channels if "sortear" in c.name.lower()), None)
@@ -563,8 +561,6 @@ async def sortear_times(ctx, num_times: int = 2):
         )
 
     embed.set_footer(text="Bom jogo e boa sorte aos times! (Esta mensagem será apagada em 3 minutos)")
-    
-    # Envia o resultado e o apaga automaticamente após 3 minutos (180s)
     await ctx.send(embed=embed, delete_after=180)
 
 @bot.command()
@@ -604,4 +600,11 @@ async def comandos(ctx):
 
     await ctx.send(embed=embed, delete_after=30)
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    if not TOKEN:
+        print("❌ ERRO CRÍTICO: O token do Discord não foi configurado!")
+    else:
+        try:
+            bot.run(TOKEN)
+        except Exception as e:
+            print(f"❌ Erro crítico ao executar o bot: {e}")
