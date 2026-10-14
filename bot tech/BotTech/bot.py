@@ -600,11 +600,18 @@ async def comandos(ctx):
 
     await ctx.send(embed=embed, delete_after=30)
 
-if __name__ == "__main__":
+async def main():
     if not TOKEN:
         print("❌ ERRO CRÍTICO: O token do Discord não foi configurado!")
-    else:
-        try:
-            bot.run(TOKEN)
-        except Exception as e:
-            print(f"❌ Erro crítico ao executar o bot: {e}")
+        return
+    
+    print("⏳ Aguardando 15 segundos para estabilizar a conexão e evitar bloqueio da Cloudflare...")
+    await asyncio.sleep(15)
+    
+    try:
+        await bot.start(TOKEN)
+    except Exception as e:
+        print(f"❌ Erro crítico ao executar o bot: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
