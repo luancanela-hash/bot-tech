@@ -228,12 +228,13 @@ class StreamPublicoView(View):
 
 
 class StreamDonoView(View):
-    def __init__(self, author_id: int, sala_id: str, dados_sala: dict, tempo_fim: datetime):
+    def __init__(self, author_id: int, sala_id: str, dados_sala: dict, tempo_fim: datetime, msg_pub: discord.Message = None):
         super().__init__(timeout=None)
         self.author_id = author_id
         self.sala_id = sala_id
         self.dados_sala = dados_sala
         self.tempo_fim = tempo_fim
+        self.msg_pub = msg_pub
         self.horas_totais = 3
 
     def _pode_controlar(self, interaction: discord.Interaction) -> bool:
@@ -278,10 +279,16 @@ class StreamDonoView(View):
         SALAS_EM_USO.pop(self.sala_id, None)
         await interaction.response.send_message("🛑 Transmissão encerrada.", ephemeral=True)
 
-        for item in self.children:
-            item.disabled = True
+        # Apaga a mensagem pública da live
+        if self.msg_pub:
+            try:
+                await self.msg_pub.delete()
+            except Exception:
+                pass
+
+        # Apaga o painel do dono
         try:
-            await interaction.message.edit(view=self)
+            await interaction.message.delete()
         except Exception:
             pass
 
@@ -317,19 +324,21 @@ class SelectSalaKosmi(Select):
         tempo_fim = datetime.now(timezone.utc) + timedelta(hours=3)
         ts = int(tempo_fim.timestamp())
 
+        # Painel público
         embed_pub = discord.Embed(
             title=f"{dados['emoji']} TRANSMISSÃO INICIADA",
             description=f"🎮 {user.mention} iniciou uma live na **{dados['nome']}**!\n⏳ Encerramento: <t:{ts}:R>\n\nClique abaixo para assistir.",
             color=dados["cor"],
         )
         view_pub = StreamPublicoView(dados["url"], tempo_fim)
-        await interaction.channel.send(embed=embed_pub, view=view_pub)
+        msg_pub = await interaction.channel.send(embed=embed_pub, view=view_pub)
 
+        # Painel do dono (passando a referência da mensagem pública para poder apagá-la depois)
         embed_dono = discord.Embed(
             description=f"🛠️ **PAINEL DO DONO** ({user.mention})\n\n⏳ Encerramento: <t:{ts}:R>",
             color=dados["cor"],
         )
-        view_dono = StreamDonoView(user.id, sala_id, dados, tempo_fim)
+        view_dono = StreamDonoView(user.id, sala_id, dados, tempo_fim, msg_pub=msg_pub)
         await interaction.channel.send(embed=embed_dono, view=view_dono)
 
 
