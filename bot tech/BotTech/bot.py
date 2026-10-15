@@ -177,7 +177,6 @@ class DropdownView(View):
 
         self.add_item(DropdownJogos(bloco))
 
-        # Ajusta botões
         self.btn_anterior.disabled = self.pagina <= 1
         self.btn_proximo.disabled = self.pagina >= self.total_paginas
         self.btn_limpar_busca.disabled = not self.termo_busca
@@ -279,7 +278,6 @@ class StreamDonoView(View):
         SALAS_EM_USO.pop(self.sala_id, None)
         await interaction.response.send_message("🛑 Transmissão encerrada.", ephemeral=True)
 
-        # Desabilita botões do painel
         for item in self.children:
             item.disabled = True
         try:
@@ -319,7 +317,6 @@ class SelectSalaKosmi(Select):
         tempo_fim = datetime.now(timezone.utc) + timedelta(hours=3)
         ts = int(tempo_fim.timestamp())
 
-        # Painel público
         embed_pub = discord.Embed(
             title=f"{dados['emoji']} TRANSMISSÃO INICIADA",
             description=f"🎮 {user.mention} iniciou uma live na **{dados['nome']}**!\n⏳ Encerramento: <t:{ts}:R>\n\nClique abaixo para assistir.",
@@ -328,7 +325,6 @@ class SelectSalaKosmi(Select):
         view_pub = StreamPublicoView(dados["url"], tempo_fim)
         await interaction.channel.send(embed=embed_pub, view=view_pub)
 
-        # Painel do dono
         embed_dono = discord.Embed(
             description=f"🛠️ **PAINEL DO DONO** ({user.mention})\n\n⏳ Encerramento: <t:{ts}:R>",
             color=dados["cor"],
@@ -349,11 +345,9 @@ class StreamPainelView(View):
 @bot.event
 async def on_ready():
     log.info(f"✅ Bot online: {bot.user} (ID: {bot.user.id})")
-    # Registra views persistentes
     bot.add_view(StreamPainelView())
     bot.add_view(DropdownView(pagina=1))
 
-    # Sincroniza slash commands UMA VEZ só
     try:
         synced = await bot.tree.sync()
         log.info(f"🔁 Slash commands sincronizados: {len(synced)}")
@@ -497,26 +491,26 @@ async def main():
         log.critical("❌ DISCORD_TOKEN não configurado!")
         return
 
-    # Backoff apenas se necessário (não dorme 15s sempre)
-    for tentativa in range(5):
-        try:
-            log.info("🚀 Iniciando bot...")
-            await bot.start(TOKEN)
-            break
-        except discord.HTTPException as e:
-            if e.status == 429:
-                espera = 60 * (2 ** tentativa)
-                log.warning(f"⏳ 429 detectado. Aguardando {espera}s...")
-                await asyncio.sleep(espera)
-            else:
-                log.exception("Erro HTTP")
+    async with bot:
+        for tentativa in range(5):
+            try:
+                log.info("🚀 Iniciando bot...")
+                await bot.start(TOKEN)
                 break
-        except discord.LoginFailure:
-            log.critical("❌ Token inválido!")
-            break
-        except Exception:
-            log.exception("Erro inesperado no startup")
-            await asyncio.sleep(30)
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    espera = 60 * (2 ** tentativa)
+                    log.warning(f"⏳ 429 detectado. Aguardando {espera}s...")
+                    await asyncio.sleep(espera)
+                else:
+                    log.exception("Erro HTTP")
+                    break
+            except discord.LoginFailure:
+                log.critical("❌ Token inválido!")
+                break
+            except Exception:
+                log.exception("Erro inesperado no startup")
+                await asyncio.sleep(30)
 
 
 if __name__ == "__main__":
