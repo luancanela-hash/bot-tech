@@ -55,8 +55,8 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 # SALAS KOSMI
 # ============================================================
 SALAS_KOSMI = {
-    "1": {"nome": "Tech Ninjas Live [1]", "url": "https://app.kosmi.io/room/f8m0ed", "emoji": "⭐", "cor": discord.Color.teal()},
-    "2": {"nome": "Tech Ninjas Live [2]", "url": "https://app.kosmi.io/room/w276in", "emoji": "🔵", "cor": discord.Color.blue()},
+    "1": {"nome": "Tech Ninjas Live [1]", "url": "https://app.kosmi.io/room/@luansantos2", "emoji": "⭐", "cor": discord.Color.teal()},
+    "2": {"nome": "Tech Ninjas Live [2]", "url": "https://app.kosmi.io/room/rvrcen", "emoji": "🔵", "cor": discord.Color.blue()},
     "3": {"nome": "Tech Ninjas Live [3]", "url": "https://app.kosmi.io/room/obybsv", "emoji": "🟢", "cor": discord.Color.green()},
     "4": {"nome": "Tech Ninjas Live [4]", "url": "https://app.kosmi.io/room/4t50cc", "emoji": "🟡", "cor": discord.Color.gold()},
     "5": {"nome": "Tech Ninjas Live [5]", "url": "https://app.kosmi.io/room/ywu834", "emoji": "🟣", "cor": discord.Color.purple()},
