@@ -3,7 +3,6 @@ import asyncio
 import threading
 import random
 import logging
-from datetime import datetime, timedelta, timezone
 from flask import Flask
 import discord
 from discord.ext import commands
@@ -38,10 +37,13 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # ============================================================
-# CONFIG DO BOT
+# CONFIGURAÇÕES DO BOT
 # ============================================================
 TOKEN = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
 PASTA_TORRENTS = "./torrents"
+
+# Link do seu grupo no GoLive (ATUALIZADO)
+LINK_GOLIVE = "https://golive.nemtudo.me/invite/zmtqQ0gR"
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -50,19 +52,6 @@ intents.members = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
-
-# ============================================================
-# SALAS KOSMI
-# ============================================================
-SALAS_KOSMI = {
-    "1": {"nome": "Tech Ninjas Live [1]", "url": "https://app.kosmi.io/room/@luansantos2", "emoji": "⭐", "cor": discord.Color.teal()},
-    "2": {"nome": "Tech Ninjas Live [2]", "url": "https://app.kosmi.io/room/rvrcen", "emoji": "🔵", "cor": discord.Color.blue()},
-    "3": {"nome": "Tech Ninjas Live [3]", "url": "https://app.kosmi.io/room/obybsv", "emoji": "🟢", "cor": discord.Color.green()},
-    "4": {"nome": "Tech Ninjas Live [4]", "url": "https://app.kosmi.io/room/4t50cc", "emoji": "🟡", "cor": discord.Color.gold()},
-    "5": {"nome": "Tech Ninjas Live [5]", "url": "https://app.kosmi.io/room/ywu834", "emoji": "🟣", "cor": discord.Color.purple()},
-}
-
-SALAS_EM_USO = {}
 JOGOS_EM_DOWNLOAD = set()
 
 # ============================================================
@@ -218,134 +207,18 @@ class DropdownView(View):
 
 
 # ============================================================
-# STREAM / KOSMI
+# PAINEL DE STREAM (GOLIVE)
 # ============================================================
-class StreamPublicoView(View):
-    def __init__(self, url_sala: str, tempo_fim: datetime):
-        super().__init__(timeout=None)
-        self.tempo_fim = tempo_fim
-        self.add_item(Button(label="ASSISTIR LIVE", url=url_sala, style=discord.ButtonStyle.link, emoji="🍿", row=0))
-
-
-class StreamDonoView(View):
-    def __init__(self, author_id: int, sala_id: str, dados_sala: dict, tempo_fim: datetime, msg_pub: discord.Message = None):
-        super().__init__(timeout=None)
-        self.author_id = author_id
-        self.sala_id = sala_id
-        self.dados_sala = dados_sala
-        self.tempo_fim = tempo_fim
-        self.msg_pub = msg_pub
-        self.horas_totais = 3
-
-    def _pode_controlar(self, interaction: discord.Interaction) -> bool:
-        is_admin = bool(interaction.user.guild_permissions.administrator) if interaction.guild else False
-        return interaction.user.id == self.author_id or is_admin
-
-    async def _embed(self):
-        ts = int(self.tempo_fim.timestamp())
-        return discord.Embed(
-            description=f"🛠️ **PAINEL DO DONO** (<@{self.author_id}>)\n\n⏳ Encerramento: <t:{ts}:R>",
-            color=self.dados_sala["cor"],
-        )
-
-    @button(label="Abrir Sua Live", style=discord.ButtonStyle.primary, emoji="🎥", custom_id="btn_abrir_live", row=1)
-    async def btn_abrir_live(self, interaction: discord.Interaction, button: Button):
-        if not self._pode_controlar(interaction):
-            return await interaction.response.send_message(
-                f"⚠️ Apenas <@{self.author_id}> ou admins.", ephemeral=True
-            )
-        v = View()
-        v.add_item(Button(label=f"Acessar {self.dados_sala['nome']}", url=self.dados_sala["url"], style=discord.ButtonStyle.link, emoji="🔗"))
-        await interaction.response.send_message("🚀 Entre na sua sala:", view=v, ephemeral=True)
-
-    @button(label="Prorrogar (+1h)", style=discord.ButtonStyle.success, emoji="⏱️", custom_id="btn_prorrogar", row=0)
-    async def btn_prorrogar(self, interaction: discord.Interaction, button: Button):
-        if not self._pode_controlar(interaction):
-            return await interaction.response.send_message("⚠️ Sem permissão.", ephemeral=True)
-
-        if self.horas_totais >= 5:
-            return await interaction.response.send_message("⚠️ Limite de 5h atingido.", ephemeral=True)
-
-        self.horas_totais += 1
-        self.tempo_fim += timedelta(hours=1)
-        await interaction.response.edit_message(embed=await self._embed(), view=self)
-        await interaction.followup.send("⏱️ Prorrogado +1h!", ephemeral=True)
-
-    @button(label="Encerrar", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="btn_fechar_stream", row=0)
-    async def fechar_stream(self, interaction: discord.Interaction, button: Button):
-        if not self._pode_controlar(interaction):
-            return await interaction.response.send_message("⚠️ Sem permissão.", ephemeral=True)
-
-        SALAS_EM_USO.pop(self.sala_id, None)
-        await interaction.response.send_message("🛑 Transmissão encerrada.", ephemeral=True)
-
-        # Apaga a mensagem pública da live
-        if self.msg_pub:
-            try:
-                await self.msg_pub.delete()
-            except Exception:
-                pass
-
-        # Apaga o painel do dono
-        try:
-            await interaction.message.delete()
-        except Exception:
-            pass
-
-
-class SelectSalaKosmi(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(
-                label=SALAS_KOSMI[s]["nome"],
-                description=f"Iniciar transmissão na sala {s}",
-                emoji=SALAS_KOSMI[s]["emoji"],
-                value=s,
-            )
-            for s in SALAS_KOSMI
-        ]
-        super().__init__(placeholder="Selecione a sala...", min_values=1, max_values=1, options=options, custom_id="select_sala_kosmi")
-
-    async def callback(self, interaction: discord.Interaction):
-        sala_id = self.values[0]
-        dados = SALAS_KOSMI.get(sala_id)
-        if not dados:
-            return await interaction.response.send_message("❌ Sala inválida.", ephemeral=True)
-
-        if sala_id in SALAS_EM_USO:
-            return await interaction.response.send_message(
-                f"⚠️ Sala em uso por <@{SALAS_EM_USO[sala_id]}>!", ephemeral=True
-            )
-
-        await interaction.response.defer()
-        user = interaction.user
-        SALAS_EM_USO[sala_id] = user.id
-
-        tempo_fim = datetime.now(timezone.utc) + timedelta(hours=3)
-        ts = int(tempo_fim.timestamp())
-
-        # Painel público
-        embed_pub = discord.Embed(
-            title=f"{dados['emoji']} TRANSMISSÃO INICIADA",
-            description=f"🎮 {user.mention} iniciou uma live na **{dados['nome']}**!\n⏳ Encerramento: <t:{ts}:R>\n\nClique abaixo para assistir.",
-            color=dados["cor"],
-        )
-        view_pub = StreamPublicoView(dados["url"], tempo_fim)
-        msg_pub = await interaction.channel.send(embed=embed_pub, view=view_pub)
-
-        # Painel do dono (passando a referência da mensagem pública para poder apagá-la depois)
-        embed_dono = discord.Embed(
-            description=f"🛠️ **PAINEL DO DONO** ({user.mention})\n\n⏳ Encerramento: <t:{ts}:R>",
-            color=dados["cor"],
-        )
-        view_dono = StreamDonoView(user.id, sala_id, dados, tempo_fim, msg_pub=msg_pub)
-        await interaction.channel.send(embed=embed_dono, view=view_dono)
-
-
 class StreamPainelView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(SelectSalaKosmi())
+        # Botão principal para acessar o grupo de salas do GoLive
+        self.add_item(Button(
+            label="Entrar no Grupo de Transmissão", 
+            url=LINK_GOLIVE, 
+            style=discord.ButtonStyle.link, 
+            emoji="🍿"
+        ))
 
 
 # ============================================================
@@ -362,16 +235,6 @@ async def on_ready():
         log.info(f"🔁 Slash commands sincronizados: {len(synced)}")
     except Exception as e:
         log.warning(f"Falha ao sincronizar comandos: {e}")
-
-
-@bot.event
-async def on_disconnect():
-    log.warning("⚠️ Bot desconectado do gateway.")
-
-
-@bot.event
-async def on_resumed():
-    log.info("🔁 Conexão com gateway retomada.")
 
 
 @bot.event
@@ -415,8 +278,8 @@ async def painel_stream(ctx):
         pass
 
     embed = discord.Embed(
-        title="🖥️ Painel de Transmissões - Tech Ninjas",
-        description="Selecione uma sala abaixo para iniciar sua transmissão:",
+        title="🖥️ Transmissões - Tech Ninjas",
+        description="Clique no botão abaixo para entrar no nosso grupo!\nLá dentro você pode escolher a sala (1 a 5) para assistir ou compartilhar sua tela.",
         color=discord.Color.orange(),
     )
     await ctx.send(embed=embed, view=StreamPainelView())
@@ -486,7 +349,7 @@ async def comandos(ctx):
         color=discord.Color.gold(),
     )
     embed.add_field(name="`!enviar_menu`", value="Painel de torrents com paginação e busca.", inline=False)
-    embed.add_field(name="`!painel_stream`", value="Painel das salas Kosmi.", inline=False)
+    embed.add_field(name="`!painel_stream`", value="Painel de transmissão do GoLive.", inline=False)
     embed.add_field(name="`!times [qtd]`", value="Divide o canal de voz em equipes.", inline=False)
     embed.set_footer(text="Some em 30s.")
     await ctx.send(embed=embed, delete_after=30)
