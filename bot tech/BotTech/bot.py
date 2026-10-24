@@ -43,7 +43,7 @@ TOKEN = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
 PASTA_TORRENTS = "./torrents"
 
 # Link do seu grupo no GoLive (ATUALIZADO)
-LINK_GOLIVE = "https://golive.nemtudo.me/invite/zmtqQ0gR"
+LINK_GOLIVE = "https://golive.nemtudo.me/invite/JyiBJKgC"
 
 intents = discord.Intents.default()
 intents.message_content = True
