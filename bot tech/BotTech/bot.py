@@ -141,7 +141,6 @@ class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
 
 class DropdownView(View):
     TAM_PAGINA = 25
-    # NOVOS EMOJIS DOS TIMES
     NOMES_TIMES = [
         ("🔴 Time Alpha", discord.Color.red()),
         ("🔵 Time Bravo", discord.Color.blue()),
@@ -277,11 +276,36 @@ async def painel_stream(ctx):
     except Exception:
         pass
 
+    # NOVO DESIGN DO PAINEL STREAM
     embed = discord.Embed(
-        title="🖥️ Transmissões - Tech Ninjas",
-        description="Clique no botão abaixo para entrar no nosso grupo!\nLá dentro você pode escolher a sala (1 a 5) para assistir ou compartilhar sua tela.",
-        color=discord.Color.orange(),
+        title="📺 CENTRAL DE TRANSMISSÕES",
+        description="┌────────────────────────────┐\n"
+                    "Seja bem-vindo à área de lives do **Tech Ninjas**!\n"
+                    "Sinta-se à vontade para assistir ou compartilhar sua tela.\n"
+                    "└────────────────────────────┘",
+        color=discord.Color.from_rgb(255, 69, 0) # Laranja avermelhado
     )
+
+    embed.add_field(
+        name="\u200b", 
+        value="━━━━━━━━━━━━━━━━━━━━━━━━━━", 
+        inline=False
+    )
+
+    embed.add_field(
+        name="🎮 **COMO FUNCIONA?**",
+        value="**1.** Clique no botão abaixo.\n"
+              "**2.** Você será redirecionado para o nosso grupo.\n"
+              "**3.** Escolha uma das 5 salas disponíveis.\n"
+              "**4.** Assista ou transmita clicando em *Compartilhar Tela*.",
+        inline=False
+    )
+
+    embed.set_footer(text="Tech Ninjas • A diversão começa aqui!")
+
+    if ctx.guild.icon:
+        embed.set_thumbnail(url=ctx.guild.icon.url)
+
     await ctx.send(embed=embed, view=StreamPainelView())
 
 
@@ -323,17 +347,13 @@ async def sortear_times(ctx, num_times: int = 2):
         color=discord.Color.from_rgb(0, 255, 127)
     )
 
-    # Lista de emojis para cada time (Estilo Ninja)
+    # Emojis estilo Ninja
     emojis_times = ["🥷", "⚔️", "🏹", "🌪️", "🔥"]
 
     for idx, integrantes in enumerate(times):
-        # Pega o nome do time
         nome_time = DropdownView.NOMES_TIMES[idx][0] if idx < len(DropdownView.NOMES_TIMES) else f"⚪ Time {idx+1}"
-        
-        # Pega o emoji ninja correspondente ao time
         emoji_time = emojis_times[idx] if idx < len(emojis_times) else "🛡️"
         
-        # Junta os nomes com uma quebra de linha e o emoji ninja escolhido
         lista_integrantes = "\n".join(f"{emoji_time} {p}" for p in integrantes) or "—"
         
         embed.add_field(
