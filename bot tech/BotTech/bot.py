@@ -312,26 +312,40 @@ async def sortear_times(ctx, num_times: int = 2):
     if len(jogadores) < num_times:
         return await ctx.send(f"❌ Poucas pessoas ({len(jogadores)}) para {num_times} times.", delete_after=5)
 
+    # Embaralha os jogadores
     random.shuffle(jogadores)
     times = [[] for _ in range(num_times)]
     for i, j in enumerate(jogadores):
         times[i % num_times].append(j)
 
+    # Criação do Embed com o NOVO DESIGN
     embed = discord.Embed(
-        title="🎲 Divisão de Times",
-        description=f"Sorteio em **{canal_voz.name}** ({len(jogadores)} jogadores):",
-        color=discord.Color.gold(),
+        title="⚔️ SORTEIO DE TIMES",
+        description=f"**{len(jogadores)}** guerreiros divididos no canal **{canal_voz.name}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        color=discord.Color.from_rgb(0, 255, 127) # Verde neon
     )
 
+    # Adicionando cada time como um campo separado (coluna)
     for idx, integrantes in enumerate(times):
-        nome = DropdownView.NOMES_TIMES[idx][0] if idx < len(DropdownView.NOMES_TIMES) else f"⚪ Time {idx+1}"
+        nome_time = DropdownView.NOMES_TIMES[idx][0] if idx < len(DropdownView.NOMES_TIMES) else f"⚪ Time {idx+1}"
+        
+        # Junta os nomes com uma quebra de linha e um emoji de escudo
+        lista_integrantes = "\n".join(f"🛡️ {p}" for p in integrantes) or "—"
+        
+        # O \u200b cria um espaço invisível para afastar as colunas
         embed.add_field(
-            name=f"{nome} ({len(integrantes)})",
-            value="\n".join(f"• {p}" for p in integrantes) or "—",
-            inline=True,
+            name=f"**{nome_time}**",
+            value=f"{lista_integrantes}\n\u200b", 
+            inline=True
         )
 
-    embed.set_footer(text="Some em 3 minutos.")
+    # Rodapé estilizado
+    embed.set_footer(text="⏳ Esta mensagem será apagada em 3 minutos.")
+    
+    # Se o servidor tiver um ícone, coloca como thumbnail no canto do card
+    if ctx.guild.icon:
+        embed.set_thumbnail(url=ctx.guild.icon.url)
+
     await ctx.send(embed=embed, delete_after=180)
 
 
