@@ -276,7 +276,7 @@ async def painel_stream(ctx):
     except Exception:
         pass
 
-    # DESIGN CLEAN DEFINITIVO
+    # DESIGN CLEAN DEFINITIVO (SEM O RODAPÉ)
     embed = discord.Embed(
         title="📺 CENTRAL DE TRANSMISSÕES",
         description="Seja bem-vindo à área de lives do **Tech Ninjas**!\n"
@@ -298,8 +298,6 @@ async def painel_stream(ctx):
               "➔ **4.** Assista ou transmita clicando em *Compartilhar Tela*.",
         inline=False
     )
-
-    embed.set_footer(text="Tech Ninjas • A diversão começa aqui!")
 
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
@@ -364,7 +362,19 @@ async def sortear_times(ctx, num_times: int = 2):
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
 
-    await ctx.send(embed=embed, delete_after=180)
+    # Envia a mensagem e guarda a referência dela
+    msg_sorteio = await ctx.send(embed=embed)
+    
+    # Cria uma tarefa paralela para apagar a mensagem em exatamente 180 segundos (3 minutos)
+    # Isso impede que o timer seja perdido se o bot tiver alguma pequena oscilação
+    async def apagar_mensagem():
+        await asyncio.sleep(180)
+        try:
+            await msg_sorteio.delete()
+        except discord.NotFound:
+            pass # Se a mensagem já foi apagada por outro motivo, só ignora
+
+    asyncio.create_task(apagar_mensagem())
 
 
 @bot.command()
