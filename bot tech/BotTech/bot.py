@@ -339,7 +339,7 @@ async def sortear_times(ctx, num_times: int = 2):
 
     embed = discord.Embed(
         title="⚔️ SORTEIO DE TIMES",
-        description=f"**{len(jogadores)}** times divididos no canal **{canal_voz.name}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        description=f"**{len(jogadores)}** jogadores divididos no canal **{canal_voz.name}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
         color=discord.Color.from_rgb(0, 255, 127)
     )
 
