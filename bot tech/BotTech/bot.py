@@ -42,7 +42,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 TOKEN = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
 PASTA_TORRENTS = "./torrents"
 
-# Link do seu grupo no GoLive (ATUALIZADO)
+# Link do seu grupo no GoLive
 LINK_GOLIVE = "https://golive.nemtudo.me/invite/JyiBJKgC"
 
 intents = discord.Intents.default()
@@ -141,6 +141,7 @@ class ModalPesquisa(Modal, title="🔍 Pesquisar Jogo"):
 
 class DropdownView(View):
     TAM_PAGINA = 25
+    # NOVOS EMOJIS DOS TIMES
     NOMES_TIMES = [
         ("🔴 Time Alpha", discord.Color.red()),
         ("🔵 Time Bravo", discord.Color.blue()),
@@ -212,7 +213,6 @@ class DropdownView(View):
 class StreamPainelView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        # Botão principal para acessar o grupo de salas do GoLive
         self.add_item(Button(
             label="Entrar no Grupo de Transmissão", 
             url=LINK_GOLIVE, 
@@ -312,37 +312,38 @@ async def sortear_times(ctx, num_times: int = 2):
     if len(jogadores) < num_times:
         return await ctx.send(f"❌ Poucas pessoas ({len(jogadores)}) para {num_times} times.", delete_after=5)
 
-    # Embaralha os jogadores
     random.shuffle(jogadores)
     times = [[] for _ in range(num_times)]
     for i, j in enumerate(jogadores):
         times[i % num_times].append(j)
 
-    # Criação do Embed com o NOVO DESIGN
     embed = discord.Embed(
         title="⚔️ SORTEIO DE TIMES",
         description=f"**{len(jogadores)}** guerreiros divididos no canal **{canal_voz.name}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        color=discord.Color.from_rgb(0, 255, 127) # Verde neon
+        color=discord.Color.from_rgb(0, 255, 127)
     )
 
-    # Adicionando cada time como um campo separado (coluna)
+    # Lista de emojis para cada time (Estilo Ninja)
+    emojis_times = ["🥷", "⚔️", "🏹", "🌪️", "🔥"]
+
     for idx, integrantes in enumerate(times):
+        # Pega o nome do time
         nome_time = DropdownView.NOMES_TIMES[idx][0] if idx < len(DropdownView.NOMES_TIMES) else f"⚪ Time {idx+1}"
         
-        # Junta os nomes com uma quebra de linha e um emoji de escudo
-        lista_integrantes = "\n".join(f"🛡️ {p}" for p in integrantes) or "—"
+        # Pega o emoji ninja correspondente ao time
+        emoji_time = emojis_times[idx] if idx < len(emojis_times) else "🛡️"
         
-        # O \u200b cria um espaço invisível para afastar as colunas
+        # Junta os nomes com uma quebra de linha e o emoji ninja escolhido
+        lista_integrantes = "\n".join(f"{emoji_time} {p}" for p in integrantes) or "—"
+        
         embed.add_field(
             name=f"**{nome_time}**",
             value=f"{lista_integrantes}\n\u200b", 
             inline=True
         )
 
-    # Rodapé estilizado
     embed.set_footer(text="⏳ Esta mensagem será apagada em 3 minutos.")
     
-    # Se o servidor tiver um ícone, coloca como thumbnail no canto do card
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
 
