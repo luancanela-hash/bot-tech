@@ -276,28 +276,26 @@ async def painel_stream(ctx):
     except Exception:
         pass
 
-    # NOVO DESIGN DO PAINEL STREAM
+    # DESIGN CLEAN DEFINITIVO
     embed = discord.Embed(
         title="📺 CENTRAL DE TRANSMISSÕES",
-        description="┌────────────────────────────┐\n"
-                    "Seja bem-vindo à área de lives do **Tech Ninjas**!\n"
-                    "Sinta-se à vontade para assistir ou compartilhar sua tela.\n"
-                    "└────────────────────────────┘",
+        description="Seja bem-vindo à área de lives do **Tech Ninjas**!\n"
+                    "Sinta-se à vontade para assistir ou compartilhar sua tela com a galera.",
         color=discord.Color.from_rgb(255, 69, 0) # Laranja avermelhado
     )
 
     embed.add_field(
         name="\u200b", 
-        value="━━━━━━━━━━━━━━━━━━━━━━━━━━", 
+        value="*Pressione o botão abaixo para entrar:*", 
         inline=False
     )
 
     embed.add_field(
         name="🎮 **COMO FUNCIONA?**",
-        value="**1.** Clique no botão abaixo.\n"
-              "**2.** Você será redirecionado para o nosso grupo.\n"
-              "**3.** Escolha uma das 5 salas disponíveis.\n"
-              "**4.** Assista ou transmita clicando em *Compartilhar Tela*.",
+        value="➔ **1.** Clique no botão de transmissão.\n"
+              "➔ **2.** Você será redirecionado para o nosso grupo no GoLive.\n"
+              "➔ **3.** Escolha uma das 5 salas disponíveis.\n"
+              "➔ **4.** Assista ou transmita clicando em *Compartilhar Tela*.",
         inline=False
     )
 
@@ -347,7 +345,6 @@ async def sortear_times(ctx, num_times: int = 2):
         color=discord.Color.from_rgb(0, 255, 127)
     )
 
-    # Emojis estilo Ninja
     emojis_times = ["🥷", "⚔️", "🏹", "🌪️", "🔥"]
 
     for idx, integrantes in enumerate(times):
