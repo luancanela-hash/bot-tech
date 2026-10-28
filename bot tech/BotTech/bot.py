@@ -207,16 +207,26 @@ class DropdownView(View):
 
 
 # ============================================================
-# PAINEL DE STREAM (GOLIVE)
+# PAINEL DE STREAM (GOLIVE) - NOVO DESIGN COM DOIS BOTÕES
 # ============================================================
 class StreamPainelView(View):
     def __init__(self):
         super().__init__(timeout=None)
+        # Botão Verde para Assistir
         self.add_item(Button(
-            label="Entrar no Grupo de Transmissão", 
+            label="ASSISTIR LIVES", 
             url=LINK_GOLIVE, 
-            style=discord.ButtonStyle.link, 
-            emoji="🍿"
+            style=discord.ButtonStyle.success, # Verde
+            emoji="🍿",
+            row=0
+        ))
+        # Botão Azul para Transmitir
+        self.add_item(Button(
+            label="TRANSMITIR MINHA TELA", 
+            url=LINK_GOLIVE, 
+            style=discord.ButtonStyle.primary, # Azul
+            emoji="📺",
+            row=0
         ))
 
 
@@ -276,28 +286,16 @@ async def painel_stream(ctx):
     except Exception:
         pass
 
-    # DESIGN CLEAN DEFINITIVO (SEM O RODAPÉ)
+    # DESIGN FOCADO EM AÇÃO (Botões coloridos e texto curto)
     embed = discord.Embed(
-        title="📺 CENTRAL DE TRANSMISSÕES",
-        description="Seja bem-vindo à área de lives do **Tech Ninjas**!\n"
-                    "Sinta-se à vontade para assistir ou compartilhar sua tela com a galera.",
+        title="🎥 Área de Transmissão",
+        description="Escolha uma opção abaixo para entrar no nosso grupo do GoLive:\n\n"
+                    "🟢 **Assistir:** Entre na sala para ver a galera jogando.\n"
+                    "🔵 **Transmitir:** Compartilhe sua tela e mostre seu jogo.",
         color=discord.Color.from_rgb(255, 69, 0) # Laranja avermelhado
     )
 
-    embed.add_field(
-        name="\u200b", 
-        value="*Pressione o botão abaixo para entrar:*", 
-        inline=False
-    )
-
-    embed.add_field(
-        name="🎮 **COMO FUNCIONA?**",
-        value="➔ **1.** Clique no botão de transmissão.\n"
-              "➔ **2.** Você será redirecionado para o nosso grupo no GoLive.\n"
-              "➔ **3.** Escolha uma das 5 salas disponíveis.\n"
-              "➔ **4.** Assista ou transmita clicando em *Compartilhar Tela*.",
-        inline=False
-    )
+    embed.set_footer(text="Dica: Dentro do grupo, escolha uma das 5 salas disponíveis.")
 
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
@@ -362,17 +360,14 @@ async def sortear_times(ctx, num_times: int = 2):
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
 
-    # Envia a mensagem e guarda a referência dela
     msg_sorteio = await ctx.send(embed=embed)
     
-    # Cria uma tarefa paralela para apagar a mensagem em exatamente 180 segundos (3 minutos)
-    # Isso impede que o timer seja perdido se o bot tiver alguma pequena oscilação
     async def apagar_mensagem():
         await asyncio.sleep(180)
         try:
             await msg_sorteio.delete()
         except discord.NotFound:
-            pass # Se a mensagem já foi apagada por outro motivo, só ignora
+            pass 
 
     asyncio.create_task(apagar_mensagem())
 
