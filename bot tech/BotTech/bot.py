@@ -308,7 +308,7 @@ async def painel_stream(ctx):
     # Dica mais limpa
     embed.add_field(
         name="\u200b", 
-        value="💡 *Dica: Dentro do grupo, escolha uma das 5 salas disponíveis.*", 
+        value="💡 *Nota: Dentro do grupo, escolha uma das 5 salas disponíveis.*", 
         inline=False
     )
 
