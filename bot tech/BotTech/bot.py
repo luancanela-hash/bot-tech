@@ -207,7 +207,7 @@ class DropdownView(View):
 
 
 # ============================================================
-# PAINEL DE STREAM (GOLIVE) - NOVO DESIGN COM DOIS BOTÕES
+# PAINEL DE STREAM (GOLIVE) - DESIGN ESPAÇADO
 # ============================================================
 class StreamPainelView(View):
     def __init__(self):
@@ -286,16 +286,31 @@ async def painel_stream(ctx):
     except Exception:
         pass
 
-    # DESIGN FOCADO EM AÇÃO (Botões coloridos e texto curto)
+    # DESIGN COM MAIS ESPAÇAMENTO E RESPIRO VISUAL
     embed = discord.Embed(
-        title="🎥 Área de Transmissão",
-        description="Escolha uma opção abaixo para entrar no nosso grupo do GoLive:\n\n"
-                    "🟢 **Assistir:** Entre na sala para ver a galera jogando.\n"
-                    "🔵 **Transmitir:** Compartilhe sua tela e mostre seu jogo.",
+        title="🎥 ÁREA DE TRANSMISSÃO",
+        description="Seja bem-vindo à nossa central de lives!\n"
+                    "Escolha uma opção abaixo para entrar no grupo do **GoLive**:\n\n"
+                    "🟢 **ASSISTIR**\n"
+                    "➔ Entre na sala para ver a galera jogando.\n\n"
+                    "🔵 **TRANSMITIR**\n"
+                    "➔ Compartilhe sua tela e mostre seu jogo.",
         color=discord.Color.from_rgb(255, 69, 0) # Laranja avermelhado
     )
 
-    embed.set_footer(text="Dica: Dentro do grupo, escolha uma das 5 salas disponíveis.")
+    # Respiro antes do rodapé
+    embed.add_field(
+        name="\u200b", 
+        value="─────────────────────────", 
+        inline=False
+    )
+
+    # Dica mais limpa
+    embed.add_field(
+        name="\u200b", 
+        value="💡 *Dica: Dentro do grupo, escolha uma das 5 salas disponíveis.*", 
+        inline=False
+    )
 
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
